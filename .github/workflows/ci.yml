@@ -58,32 +58,47 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      # windows-11-arm 镜像不带 ffmpeg 也没有 winget：尽力安装（winget → 直拉 gyan.dev
-      # arm64 静态包），任何失败都只告警不阻断——测试步骤会跳过 test_decode 其余照跑。
-      - name: 确保 ffmpeg（windows-11-arm，尽力而为）
+      # windows-11-arm 镜像既不带 ffmpeg 也不带 winget。arm64 版 ffmpeg 用社区构建
+      # tordona/ffmpeg-win-arm64（gyan.dev 无 arm64 构建、直链还会被反爬拦，做法对齐
+      # ffgui 项目）：GitHub API 取最新 release 的 full-static 包 → curl 下载 →
+      # 7z/tar 解压。任何失败只告警不阻断——测试步骤会跳过 test_decode 其余照跑。
+      - name: 下载 ARM64 版 ffmpeg（tordona/ffmpeg-win-arm64，对齐 ffgui 做法）
         if: matrix.os == 'windows-11-arm'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Continue'
           function Have-Ffmpeg { [bool](Get-Command ffmpeg -ErrorAction SilentlyContinue) }
-          if (Have-Ffmpeg) { ffmpeg -version | Select-Object -First 1 }
-          else {
-            Write-Host "ffmpeg 不在 PATH，尝试 winget 安装..."
-            try {
-              winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements --silent
-              $link = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-              echo "$link" >> $env:GITHUB_PATH; $env:PATH += ";$link"
-            } catch { Write-Host "winget 不可用：$($_.Exception.Message)" }
-            if (-not (Have-Ffmpeg)) {
-              Write-Host "改从 gyan.dev 直拉 arm64 静态包..."
-              try {
-                $zip = "$env:TEMP\ffmpeg-arm64.zip"
-                Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-arm64-essentials.zip" -OutFile $zip
-                Expand-Archive $zip "$env:TEMP\ffmpeg-arm64"
-                $bin = (Get-ChildItem "$env:TEMP\ffmpeg-arm64" -Directory | Select-Object -First 1).FullName + "\bin"
-                echo "$bin" >> $env:GITHUB_PATH; $env:PATH += ";$bin"
-              } catch { Write-Host "直拉也失败：$($_.Exception.Message)" }
+          if (Have-Ffmpeg) { ffmpeg -version | Select-Object -First 1; exit 0 }
+          try {
+            $headers = @{ Authorization = 'Bearer ${{ secrets.GITHUB_TOKEN }}' }
+            $rel = Invoke-RestMethod 'https://api.github.com/repos/tordona/ffmpeg-win-arm64/releases/latest' -Headers $headers
+            if ($rel.message) { throw "GitHub API 返回错误：$($rel.message)" }
+            $asset = $rel.assets | Where-Object { $_.name -match 'full-static-win-arm64\.7z$' } | Select-Object -First 1
+            if (-not $asset) { throw 'ffmpeg-win-arm64 最新 release 中未找到 full-static-win-arm64.7z' }
+            Write-Host "下载 $($asset.name)"
+            $tmp = Join-Path $env:RUNNER_TEMP 'ffmpeg-arm64-extract'
+            Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force $tmp | Out-Null
+            curl.exe -L --fail -o "$tmp\ffmpeg.7z" $asset.browser_download_url
+            if ($LASTEXITCODE -ne 0) { throw '下载 ffmpeg arm64 包失败' }
+            # 优先 7z；没有则试系统自带的 tar（bsdtar 可读 7z）
+            $extracted = $false
+            if (Get-Command 7z -ErrorAction SilentlyContinue) {
+              7z x "$tmp\ffmpeg.7z" -o"$tmp" | Out-Null
+              if ($LASTEXITCODE -eq 0) { $extracted = $true }
             }
+            if (-not $extracted) {
+              tar -xf "$tmp\ffmpeg.7z" -C "$tmp"
+              if ($LASTEXITCODE -eq 0) { $extracted = $true }
+            }
+            if (-not $extracted) { throw '7z/tar 均无法解压 ffmpeg 包' }
+            $exe = Get-ChildItem -Recurse -Filter ffmpeg.exe -Path $tmp |
+              Where-Object { $_.FullName -like '*bin*' } | Select-Object -First 1
+            if (-not $exe) { throw '压缩包中未找到 bin/ffmpeg.exe' }
+            $bin = $exe.DirectoryName
+            echo "$bin" >> $env:GITHUB_PATH; $env:PATH += ";$bin"
+          } catch {
+            Write-Host "::warning::ffmpeg arm64 获取失败：$($_.Exception.Message)"
           }
           if (Have-Ffmpeg) { Write-Host "ffmpeg OK"; ffmpeg -version | Select-Object -First 1 }
           else { Write-Host "::warning::ffmpeg 最终不可用，cargo test 将跳过 test_decode" }
