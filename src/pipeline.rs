@@ -13,6 +13,10 @@
 //!   ct-punc 兜底（zh ct-punc 会把英文句号插在错误位置）。
 //! * [`bare_timed`] ← `transcribe` 里英文分支的 bare 文本构造（逐字去掉 `_PUNCT_STRIP`）。
 //! * `latin_punct` / `align_punct_to_timed` / `strip_terminal_timed` 保住真实 CTC 时间戳。
+//! * 说话人分离（`job.diarization`）← 上游 `inference_with_vad` 的 `spk_model="cam++"` 分支：
+//!   VAD 段 → `speaker::diarize::sv_chunk` 切窗 → cam++ 嵌入 → `speaker::cluster::cluster` →
+//!   `speaker::diarize::postprocess` → `speaker::diarize::distribute_spk` 得到每段说话人，
+//!   再给该 VAD 段产出的每条 cue 打上 `spk{n}`。
 
 use std::path::PathBuf;
 
@@ -20,8 +24,11 @@ use crate::asr::{AsrChunkOutput, AsrEngine, ContextualParaformer, Paraformer, Se
 use crate::error::{Error, Result};
 use crate::media::Audio;
 use crate::models::manager::ModelManager;
-use crate::models::{ModelSpec, ModelTask, PUNC_MODEL, VAD_MODEL, get_model};
+use crate::models::{ModelSpec, ModelTask, PUNC_MODEL, SPK_MODEL, VAD_MODEL, get_model};
 use crate::punc::{Punctuator, align_punct_to_timed};
+use crate::speaker::cluster::cluster;
+use crate::speaker::diarize::{SpkChunk, distribute_spk, postprocess, sv_chunk};
+use crate::speaker::embed::SpeakerEmbedder;
 use crate::text::normalize::{
     has_cjk, has_terminal, normalize_latin_punct, py_trim, strip_terminal_timed,
 };
@@ -58,6 +65,8 @@ pub struct Engine {
     asr: Option<Box<dyn AsrEngine>>,
     /// ct-punc；`None` 表示还没加载（懒加载，见 `Engine::punctuate`）。
     punc: Option<Punctuator>,
+    /// cam++ 说话人嵌入；`None` 表示还没加载（懒加载，见 `Engine::ensure_spk`）。
+    spk: Option<SpeakerEmbedder>,
     loaded: bool,
 }
 
@@ -195,6 +204,7 @@ impl Engine {
             vad: None,
             asr: None,
             punc: None,
+            spk: None,
             loaded: false,
         })
     }
@@ -242,6 +252,35 @@ impl Engine {
         let dir = self.manager.ensure_model(&PUNC_MODEL)?;
         self.punc = Some(Punctuator::new(&dir, threads)?);
         Ok(())
+    }
+
+    /// 建 cam++ 嵌入器（`ensure_model` 缺则从 GitHub 直链下载，约 27MB）。
+    ///
+    /// 只在 `job.diarization` 为真时懒加载：不开说话人分离就不下载。
+    fn ensure_spk(&mut self) -> Result<()> {
+        if self.spk.is_some() {
+            return Ok(());
+        }
+        let threads = self.threads();
+        let dir = self.manager.ensure_model(&SPK_MODEL)?;
+        self.spk = Some(SpeakerEmbedder::new(&dir, threads)?);
+        Ok(())
+    }
+
+    /// 逐 sv_chunk 求 cam++ 嵌入。
+    ///
+    /// 单独成方法是为了把 `self.spk` 的可变借用限制在这次调用内：
+    /// ASR 循环里会同时用到 `self.asr`，两个字段不能同时可变借用。
+    fn embed_chunks(&mut self, chunks: &[SpkChunk]) -> Result<Vec<Vec<f32>>> {
+        let spk = self
+            .spk
+            .as_mut()
+            .ok_or_else(|| Error::Inference("CAM++ 未加载".to_string()))?;
+        let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(chunks.len());
+        for chunk in chunks {
+            embeddings.push(spk.embed(&chunk.samples)?);
+        }
+        Ok(embeddings)
     }
 
     /// `_punctuate`：懒加载 ct-punc 后给文本补标点；**失败不致命，退回原文**。
@@ -314,6 +353,25 @@ impl Engine {
         }
         report("vad", 100.0);
 
+        // 1b) 说话人分离 -> 每个 VAD 段的说话人编号（`spk_model="cam++"` 分支）
+        //
+        // 上游 full 引擎只在 Paraformer 系开说话人分离（`app/engine/funasr_full_engine.py`：
+        // `self._diar = bool(self.opts.diarization) and not self._builtin_punc`）；
+        // Rust 侧是超集，对全部引擎生效（SenseVoice 也能给 `[spkN]` 前缀）。
+        let span_speakers: Vec<usize> = if job.diarization {
+            report("spk", 0.0);
+            self.ensure_spk()?;
+            let chunks = sv_chunk(&spans, &audio.samples);
+            let embeddings = self.embed_chunks(&chunks)?;
+            let labels = cluster(&embeddings, job.preset_spk_num);
+            let timeline = postprocess(&chunks, &labels);
+            let speakers = distribute_spk(&spans, &timeline);
+            report("spk", 100.0);
+            speakers
+        } else {
+            Vec::new()
+        };
+
         // 2) 逐段 ASR -> 标点 -> 按自然语句切分（每段产出多条字幕）
         let engine_kind = self.spec.engine;
         let punct_mode = job.punct;
@@ -333,6 +391,8 @@ impl Engine {
                 continue; // <50ms，跳过
             }
             let done_pct = (i + 1) as f32 / n as f32 * 100.0;
+            // 本段产出的字幕区间起点：段末再按 span 序号打说话人标签
+            let before = segments.len();
 
             if engine_kind == EngineKind::SenseVoice {
                 // SenseVoice：CTC 帧位置推出**真实** token 时间，按自然语句切句
@@ -408,6 +468,14 @@ impl Engine {
                 };
                 report("punc", done_pct);
                 segments.extend(segment_span(&text, start_ms, end_ms, max_chars));
+            }
+            // 本段产出的每条字幕挂说话人（`span_speakers` 按 span 序号对齐；
+            // 被 `continue` 跳过的段没有字幕，索引仍按 span 序号而不是字幕序号）
+            if job.diarization {
+                let speaker = format!("spk{}", span_speakers[i]);
+                for seg in &mut segments[before..] {
+                    seg.speaker = Some(speaker.clone());
+                }
             }
         }
         report("punc", 100.0);

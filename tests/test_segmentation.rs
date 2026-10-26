@@ -51,11 +51,13 @@ fn test_enforce_monotonic_fixes_overlap_and_order() {
             start_ms: 1000,
             end_ms: 1001,
             text: "Hi.".to_string(),
+            speaker: None,
         },
         Segment {
             start_ms: 900,
             end_ms: 2000,
             text: "Yo.".to_string(),
+            speaker: None,
         }, // 起点早于上一条终点
     ];
     enforce_monotonic(&mut segs);

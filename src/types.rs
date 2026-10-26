@@ -8,6 +8,8 @@ pub struct Segment {
     pub start_ms: i64,
     pub end_ms: i64,
     pub text: String,
+    /// 说话人标签（diarization 开启时存在），格式 `spk{整数}`，对应原项目 Segment.speaker。
+    pub speaker: Option<String>,
 }
 
 /// 带绝对时间（毫秒）的文本片；SenseVoice 路径下时间为真实 CTC 帧位置推出。
@@ -57,6 +59,10 @@ pub struct JobOptions {
     pub punct: PunctMode,
     /// 热词，空格分隔（仅 contextual 模型使用）。
     pub hotwords: String,
+    /// 说话人分离（cam++）。上游 full 引擎仅 Paraformer 系支持；Rust 实现对全部引擎开放。
+    pub diarization: bool,
+    /// 预设说话人数（对应 FunASR `preset_spk_num`；`None` = 自动 eigengap 估计）。
+    pub preset_spk_num: Option<usize>,
 }
 
 impl Default for JobOptions {
@@ -67,6 +73,8 @@ impl Default for JobOptions {
             max_cue_ms: 7000,
             punct: PunctMode::Auto,
             hotwords: String::new(),
+            diarization: false,
+            preset_spk_num: None,
         }
     }
 }

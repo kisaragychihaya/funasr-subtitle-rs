@@ -95,12 +95,38 @@ impl ModelManager {
     }
 
     /// 确保模型已下载（含 aux_files 补拉与 local_copies 复制/改名），返回模型目录。
+    ///
+    /// `spec.direct` 为非 ModelScope 托管的直链单文件（如 cam++ ONNX）：
+    /// 跳过文件列表 API，直接按 URL 下载到模型根目录下的文件名。
     pub fn ensure_model(&self, spec: &ModelSpec) -> Result<PathBuf> {
         let target = model_dir(&self.root, spec);
         fs::create_dir_all(&target)
             .map_err(|e| Error::Model(format!("创建模型目录 {} 失败: {e}", target.display())))?;
 
         let client = http_client()?;
+
+        if let Some((url, size)) = spec.direct {
+            let dest_name = url
+                .rsplit('/')
+                .next()
+                .filter(|n| !n.is_empty())
+                .ok_or_else(|| {
+                    Error::Model(format!("模型 {} 的直链 URL 无文件名: {url}", spec.id))
+                })?;
+            let dest = dest_for(&target, dest_name);
+            if needs_download(&dest) {
+                let item = DownloadItem {
+                    repo: String::new(), // 空 repo = 直链：path 即完整 URL
+                    path: url.to_string(),
+                    size,
+                    dest_name: dest_name.to_string(),
+                };
+                let bar = progress_bar(size.max(1), spec.name);
+                download_item(&client, &item, &target, &bar)?;
+                bar.finish_with_message(format!("{} 就绪", spec.id));
+            }
+            return Ok(target);
+        }
 
         let files = self.fetch_file_list(&client, spec.repo)?;
         let mut items = pending_repo_downloads(spec.repo, &files, &target);
@@ -400,7 +426,12 @@ fn stream_to_part(
     part: &Path,
     bar: &ProgressBar,
 ) -> Result<()> {
-    let url = file_url(&item.repo, &item.path);
+    // repo 为空 = 直链下载（spec.direct），path 即完整 URL。
+    let url = if item.repo.is_empty() {
+        item.path.clone()
+    } else {
+        file_url(&item.repo, &item.path)
+    };
     let mut resp = client
         .get(&url)
         .send()

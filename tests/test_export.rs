@@ -10,6 +10,7 @@ fn seg(start_ms: i64, end_ms: i64, text: &str) -> Segment {
         start_ms,
         end_ms,
         text: text.to_string(),
+        speaker: None,
     }
 }
 

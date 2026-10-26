@@ -1,0 +1,108 @@
+{
+  "segments": [
+    {
+      "start_ms": 181,
+      "end_ms": 3320,
+      "text": "大家好，欢迎来到今天的分享。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 3929,
+      "end_ms": 10761,
+      "text": "我们今天要聊的是一个非常有趣的话题，那就是如何用很少的时间做出",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 10761,
+      "end_ms": 12140,
+      "text": "高质量的软件。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 12847,
+      "end_ms": 15290,
+      "text": "很多人以为开发工具一定。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 15921,
+      "end_ms": 19180,
+      "text": "Hello everyone, and thank you for joining us today",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 19680,
+      "end_ms": 23710,
+      "text": "We are going to talk about building useful tools with very little effort",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 24351,
+      "end_ms": 28385,
+      "text": "Many people believe that good software has to be complicated, but that is",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 28385,
+      "end_ms": 29530,
+      "text": "not true at all",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 30142,
+      "end_ms": 31020,
+      "text": "Great tools",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 31810,
+      "end_ms": 36800,
+      "text": "刚才我们讲了基本的方法，现在来看看实际案例。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 37389,
+      "end_ms": 44631,
+      "text": "假设你要给一段录音自动生成字幕，传统做法需要很多步骤，而且容易",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 44631,
+      "end_ms": 45410,
+      "text": "出错。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 45924,
+      "end_ms": 46860,
+      "text": "新的思。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 47510,
+      "end_ms": 49970,
+      "text": "Now let us look at a real world example",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 50600,
+      "end_ms": 54570,
+      "text": "Imagine that you want to create subtitles for a recording automatically",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 55080,
+      "end_ms": 59230,
+      "text": "The traditional approach takes many steps and often produces mistakes",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 59800,
+      "end_ms": 62380,
+      "text": "A better idea is to connect the whole pipeline",
+      "speaker": "spk1"
+    }
+  ],
+  "srt": "1\n00:00:00,181 --> 00:00:03,320\n[spk0] 大家好，欢迎来到今天的分享。\n\n2\n00:00:03,929 --> 00:00:10,761\n[spk0] 我们今天要聊的是一个非常有趣的话题，那就是如何用很少的时间做出\n\n3\n00:00:10,761 --> 00:00:12,140\n[spk0] 高质量的软件。\n\n4\n00:00:12,847 --> 00:00:15,290\n[spk0] 很多人以为开发工具一定。\n\n5\n00:00:15,921 --> 00:00:19,180\n[spk1] Hello everyone, and thank you for joining us today\n\n6\n00:00:19,680 --> 00:00:23,710\n[spk1] We are going to talk about building useful tools with very little effort\n\n7\n00:00:24,351 --> 00:00:28,385\n[spk1] Many people believe that good software has to be complicated, but that is\n\n8\n00:00:28,385 --> 00:00:29,530\n[spk1] not true at all\n\n9\n00:00:30,142 --> 00:00:31,020\n[spk1] Great tools\n\n10\n00:00:31,810 --> 00:00:36,800\n[spk0] 刚才我们讲了基本的方法，现在来看看实际案例。\n\n11\n00:00:37,389 --> 00:00:44,631\n[spk0] 假设你要给一段录音自动生成字幕，传统做法需要很多步骤，而且容易\n\n12\n00:00:44,631 --> 00:00:45,410\n[spk0] 出错。\n\n13\n00:00:45,924 --> 00:00:46,860\n[spk0] 新的思。\n\n14\n00:00:47,510 --> 00:00:49,970\n[spk1] Now let us look at a real world example\n\n15\n00:00:50,600 --> 00:00:54,570\n[spk1] Imagine that you want to create subtitles for a recording automatically\n\n16\n00:00:55,080 --> 00:00:59,230\n[spk1] The traditional approach takes many steps and often produces mistakes\n\n17\n00:00:59,800 --> 00:01:02,380\n[spk1] A better idea is to connect the whole pipeline\n",
+  "srt_plain": "1\n00:00:00,181 --> 00:00:03,320\n大家好，欢迎来到今天的分享。\n\n2\n00:00:03,929 --> 00:00:10,761\n我们今天要聊的是一个非常有趣的话题，那就是如何用很少的时间做出\n\n3\n00:00:10,761 --> 00:00:12,140\n高质量的软件。\n\n4\n00:00:12,847 --> 00:00:15,290\n很多人以为开发工具一定。\n\n5\n00:00:15,921 --> 00:00:19,180\nHello everyone, and thank you for joining us today\n\n6\n00:00:19,680 --> 00:00:23,710\nWe are going to talk about building useful tools with very little effort\n\n7\n00:00:24,351 --> 00:00:28,385\nMany people believe that good software has to be complicated, but that is\n\n8\n00:00:28,385 --> 00:00:29,530\nnot true at all\n\n9\n00:00:30,142 --> 00:00:31,020\nGreat tools\n\n10\n00:00:31,810 --> 00:00:36,800\n刚才我们讲了基本的方法，现在来看看实际案例。\n\n11\n00:00:37,389 --> 00:00:44,631\n假设你要给一段录音自动生成字幕，传统做法需要很多步骤，而且容易\n\n12\n00:00:44,631 --> 00:00:45,410\n出错。\n\n13\n00:00:45,924 --> 00:00:46,860\n新的思。\n\n14\n00:00:47,510 --> 00:00:49,970\nNow let us look at a real world example\n\n15\n00:00:50,600 --> 00:00:54,570\nImagine that you want to create subtitles for a recording automatically\n\n16\n00:00:55,080 --> 00:00:59,230\nThe traditional approach takes many steps and often produces mistakes\n\n17\n00:00:59,800 --> 00:01:02,380\nA better idea is to connect the whole pipeline\n"
+}

@@ -382,6 +382,7 @@ pub fn segment_timed(
             start_ms: *st,
             end_ms: en,
             text: txt.clone(),
+            speaker: None,
         });
     }
     segs
@@ -414,6 +415,7 @@ pub fn segment_span(text: &str, start_ms: i64, end_ms: i64, max_chars: usize) ->
             start_ms,
             end_ms,
             text: pieces[0].clone(),
+            speaker: None,
         }];
     }
 
@@ -434,6 +436,7 @@ pub fn segment_span(text: &str, start_ms: i64, end_ms: i64, max_chars: usize) ->
             start_ms: s,
             end_ms: e,
             text: p.clone(),
+            speaker: None,
         });
     }
     // 末段对齐到 end_ms

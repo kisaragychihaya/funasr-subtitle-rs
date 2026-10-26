@@ -12,6 +12,7 @@ pub enum ModelTask {
     Asr,
     Vad,
     Punc,
+    Spk,
 }
 
 /// 模型描述。字段语义与原项目 ModelSpec 一一对应。
@@ -32,6 +33,9 @@ pub struct ModelSpec {
     pub supports_hotwords: bool,
     /// 下载后模型目录内的复制/改名：(源文件名, 目标文件名)。
     pub local_copies: &'static [(&'static str, &'static str)],
+    /// 直链下载（非 ModelScope 托管的单个文件）：`(完整 URL, 文件大小字节数)`。
+    /// 设置后 `repo`/`aux_files`/`local_copies` 不参与下载（如 cam++ speaker 模型）。
+    pub direct: Option<(&'static str, u64)>,
 }
 
 /// SenseVoiceSmall（多语言·默认·快），自带标点。
@@ -49,6 +53,7 @@ pub const SENSEVOICE: ModelSpec = ModelSpec {
     engine: EngineKind::SenseVoice,
     supports_hotwords: false,
     local_copies: &[],
+    direct: None,
 };
 
 /// Paraformer-zh（中文高精度）。
@@ -63,6 +68,7 @@ pub const PARAFORMER_ZH: ModelSpec = ModelSpec {
     engine: EngineKind::Paraformer,
     supports_hotwords: false,
     local_copies: &[],
+    direct: None,
 };
 
 /// Paraformer-zh 热词版（需把 model_eb.onnx 复制为 model_eb_quant.onnx）。
@@ -77,6 +83,7 @@ pub const PARAFORMER_ZH_HOTWORD: ModelSpec = ModelSpec {
     engine: EngineKind::Contextual,
     supports_hotwords: true,
     local_copies: &[("model_eb.onnx", "model_eb_quant.onnx")],
+    direct: None,
 };
 
 /// FSMN-VAD（所有 ASR 共享）。
@@ -91,6 +98,7 @@ pub const VAD_MODEL: ModelSpec = ModelSpec {
     engine: EngineKind::SenseVoice, // 辅助模型，engine 字段无意义
     supports_hotwords: false,
     local_copies: &[],
+    direct: None,
 };
 
 /// CT-Punc 标点（Paraformer 必用；SenseVoice 懒加载兜底）。
@@ -105,6 +113,29 @@ pub const PUNC_MODEL: ModelSpec = ModelSpec {
     engine: EngineKind::SenseVoice, // 辅助模型，engine 字段无意义
     supports_hotwords: false,
     local_copies: &[],
+    direct: None,
+};
+
+/// CAM++ 说话人嵌入（说话人分离用）。
+///
+/// 不在 ModelScope 托管 ONNX：用的是 lovemefan/campplus 从 damo
+/// `speech_campplus_sv_zh-cn_16k-common` 导出的 ONNX（输入 `fbank`(1,T,80)，
+/// 输出 192 维嵌入；等价性验证见 reference/PINNED_DIAR_VERSIONS.txt）。
+pub const SPK_MODEL: ModelSpec = ModelSpec {
+    id: "campplus/speaker-diarization-onnx",
+    name: "CAM++ 说话人分离",
+    task: ModelTask::Spk,
+    size_mb: 26.6,
+    repo: "campplus/speaker-diarization-onnx",
+    aux_files: &[],
+    builtin_punc: false,
+    engine: EngineKind::SenseVoice, // 辅助模型，engine 字段无意义
+    supports_hotwords: false,
+    local_copies: &[],
+    direct: Some((
+        "https://raw.githubusercontent.com/lovemefan/campplus/main/campplus/onnx/campplus.onnx",
+        27_844_629,
+    )),
 };
 
 /// 面向用户的 ASR 模型目录。
@@ -119,6 +150,7 @@ pub const ALL_MODELS: &[ModelSpec] = &[
     PARAFORMER_ZH_HOTWORD,
     VAD_MODEL,
     PUNC_MODEL,
+    SPK_MODEL,
 ];
 
 /// 按 id 查模型（含辅助模型）。

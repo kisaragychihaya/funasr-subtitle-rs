@@ -47,9 +47,10 @@ pub fn to_txt(segments: &[Segment]) -> String {
     lines.join("\n")
 }
 
-/// 导出 JSON 数组（字段与原项目 schemas 一致：start_ms/end_ms/text）。
+/// 导出 JSON 数组（字段与原项目 schemas 一致：start_ms/end_ms/text[/speaker]）。
 ///
-/// 原实现的 `speaker` 字段在 Rust 侧 `Segment` 契约中不存在，故不输出；
+/// `speaker` 仅在存在时输出，键序对齐原实现
+/// `{**base, **({"speaker": seg.speaker} if seg.speaker else {})}`（在 text 之后）；
 /// 文本沿用 `json.dumps(..., ensure_ascii=False, indent=2)` 的排布与转义规则。
 pub fn to_json(segments: &[Segment]) -> String {
     if segments.is_empty() {
@@ -65,7 +66,15 @@ pub fn to_json(segments: &[Segment]) -> String {
         out.push_str(&format!("    \"end_ms\": {},\n", seg.end_ms));
         out.push_str("    \"text\": \"");
         push_json_string(&mut out, py_strip(&seg.text));
-        out.push_str("\"\n  }");
+        out.push('\"');
+        if let Some(spk) = &seg.speaker
+            && !spk.is_empty()
+        {
+            out.push_str(",\n    \"speaker\": \"");
+            push_json_string(&mut out, spk);
+            out.push('\"');
+        }
+        out.push_str("\n  }");
     }
     out.push_str("\n]");
     out
@@ -81,9 +90,13 @@ fn fmt_ts(ms: i64, sep: char) -> String {
     format!("{h:02}:{m:02}:{s:02}{sep}{milli:03}")
 }
 
-/// cue 的可见文本：对应 Python `_line_text`（原实现的 speaker 前缀无对应字段）。
+/// cue 的可见文本：对应 Python `_line_text`（speaker 存在时输出 `[spk0] 文本`）。
 fn cue_text(seg: &Segment) -> String {
-    py_strip(&fold_newline_runs(&seg.text)).to_string()
+    let text = py_strip(&fold_newline_runs(&seg.text)).to_string();
+    match &seg.speaker {
+        Some(spk) if !spk.is_empty() => format!("[{spk}] {text}"),
+        _ => text,
+    }
 }
 
 /// Python `str.strip()`（无参版本）；空白判定统一走 `crate::text::normalize::is_py_space`。

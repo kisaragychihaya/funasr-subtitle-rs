@@ -12,6 +12,7 @@ pub mod models;
 pub mod ort_util;
 pub mod pipeline;
 pub mod punc;
+pub mod speaker;
 pub mod text;
 pub mod vad;
 

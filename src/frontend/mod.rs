@@ -134,6 +134,17 @@ pub fn load_cmvn(path: &Path) -> Result<Cmvn> {
     }
 }
 
+/// 窗函数类型（Kaldi `FrameExtractionOptions::WindowType`；本仓库只用到这两种）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowType {
+    /// `0.54 - 0.46*cos(2πi/(L-1))`：SenseVoice / Paraformer 的 `config.yaml` 显式指定
+    /// `window: hamming`（vendored `frontend.py` 的默认值也是 hamming）。
+    Hamming,
+    /// `(0.5 - 0.5*cos(2πi/(L-1)))^0.85`：knf 的默认窗。说话人 golden 的
+    /// `reference/diar_common.chunk_fbank` 没设 `window_type`，实际用的就是这个。
+    Povey,
+}
+
 /// 提取特征：fbank(80维) → LFR 叠帧 → CMVN（顺序以 vendored 源码为准）。
 /// wave 为 s16 原始采样；数值须与 golden feats 对齐（atol 1e-4）。
 pub fn extract_features(
@@ -141,6 +152,23 @@ pub fn extract_features(
     sample_rate: u32,
     cfg: &FrontendConfig,
     cmvn: Option<&Cmvn>,
+) -> Result<Features> {
+    // 参考实现把采样当 float32 直接喂 knf（不做归一化），这里同样只做类型转换
+    let samples: Vec<f32> = wave.iter().map(|v| f32::from(*v)).collect();
+    extract_features_f32(&samples, sample_rate, cfg, cmvn, WindowType::Hamming)
+}
+
+/// 提取特征（浮点采样 + 显式窗函数）。
+///
+/// 与 [`extract_features`] 只差两个入口参数：采样已是 f32（缩放由调用方决定）、窗函数
+/// 显式给出。说话人链路需要它——golden `reference/diar_common.chunk_fbank` 喂的是
+/// `i16 / 32768` 归一化后的采样，且沿用 knf 默认的 povey 窗（见 [`WindowType`]）。
+pub fn extract_features_f32(
+    wave: &[f32],
+    sample_rate: u32,
+    cfg: &FrontendConfig,
+    cmvn: Option<&Cmvn>,
+    window: WindowType,
 ) -> Result<Features> {
     if sample_rate != SUPPORTED_SAMPLE_RATE {
         return Err(Error::Frontend(format!(
@@ -160,7 +188,7 @@ pub fn extract_features(
         )));
     }
 
-    let fbank = fbank(wave, cfg)?;
+    let fbank = fbank(wave, cfg, window)?;
     let stacked = if cfg.lfr_m != 1 || cfg.lfr_n != 1 {
         apply_lfr(&fbank, cfg.lfr_m, cfg.lfr_n)?
     } else {
@@ -207,7 +235,7 @@ pub fn paraformer_frontend() -> FrontendConfig {
 // ---------------------------------------------------------------- fbank
 
 /// Kaldi 式 fbank：帧切分 → 去直流 → 预加重 → 窗 → 512 点实数 FFT → 功率谱 → mel → log。
-fn fbank(wave: &[i16], cfg: &FrontendConfig) -> Result<Array2<f32>> {
+fn fbank(wave: &[f32], cfg: &FrontendConfig, window_type: WindowType) -> Result<Array2<f32>> {
     let sr = SUPPORTED_SAMPLE_RATE as f32;
     let frame_length = (sr * 0.001 * cfg.frame_length_ms) as usize;
     let frame_shift = (sr * 0.001 * cfg.frame_shift_ms) as usize;
@@ -233,7 +261,7 @@ fn fbank(wave: &[i16], cfg: &FrontendConfig) -> Result<Array2<f32>> {
         )));
     }
 
-    let window = hamming_window(frame_length);
+    let window = window_values(window_type, frame_length);
     let mel = MelBanks::new(cfg.n_mels, sr, padded)?;
     let rfft = RealFft::new(padded);
 
@@ -244,7 +272,7 @@ fn fbank(wave: &[i16], cfg: &FrontendConfig) -> Result<Array2<f32>> {
     for f in 0..num_frames {
         let start = f * frame_shift;
         for (i, slot) in frame.iter_mut().take(frame_length).enumerate() {
-            *slot = wave[start + i] as f32;
+            *slot = wave[start + i];
         }
         remove_dc_offset(&mut frame[..frame_length]);
         preemphasize(&mut frame[..frame_length], cfg.preemphasis);
@@ -263,14 +291,20 @@ fn fbank(wave: &[i16], cfg: &FrontendConfig) -> Result<Array2<f32>> {
     Ok(out)
 }
 
-/// `GetWindow("hamming", window_size)`：`0.54 - 0.46*cos(2πi/(L-1))`，double 计算后落 float。
-fn hamming_window(len: usize) -> Vec<f32> {
+/// `GetWindow(type, window_size)`：`a = 2π/(L-1)`，double 计算后落 float
+/// （kaldi-native-fbank 的 `FeatureWindowFunction` 也是 double 算、存 BaseFloat）。
+fn window_values(kind: WindowType, len: usize) -> Vec<f32> {
     if len < 2 {
         return vec![1.0; len];
     }
     let a = std::f64::consts::TAU / (len - 1) as f64;
     (0..len)
-        .map(|i| (0.54 - 0.46 * (a * i as f64).cos()) as f32)
+        .map(|i| match kind {
+            // hamming：0.54 - 0.46*cos(a*i)
+            WindowType::Hamming => (0.54 - 0.46 * (a * i as f64).cos()) as f32,
+            // povey：(0.5 - 0.5*cos(a*i))^0.85
+            WindowType::Povey => (0.5 - 0.5 * (a * i as f64).cos()).powf(0.85) as f32,
+        })
         .collect()
 }
 

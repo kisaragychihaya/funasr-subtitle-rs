@@ -1,0 +1,49 @@
+funasr-subtitle-rs 说话人分离 golden harness —— 固定版本记录
+=============================================================
+生成方式：.venv-diar（pip freeze 实录）+ 一次性等价验证结果。日期 2026-10-26。
+
+Python 解释器
+  Python 3.12.3 (MSC v1.938 64 bit / AMD64)，与 .venv-golden 同解释器。
+
+推理栈（.venv-diar，pip 实际解析出的版本）
+  torch                  2.14.1+cpu   （--index-url https://download.pytorch.org/whl/cpu）
+  torchaudio             2.11.0+cpu
+  funasr                 1.4.16       （官方 torch 后端，仅用于等价验证/交叉核对，
+                                        不进 golden 生成链）
+  modelscope             1.37.1       ★ 与 .venv-golden 同理必须钉 <1.38
+  kaldi-native-fbank     1.22.4
+  onnxruntime            1.31.0
+  numpy                  2.5.4        （仅本 venv；golden 链跑在 .venv-golden 的 numpy 1.26.4）
+
+golden 生成链（.venv-golden，无 torch 依赖）
+  reference/diar_common.py     契约算法库（sv_chunk/fbank/MT19937 定种子谱聚类/后处理）
+  reference/dump_golden_diar.py  编排落盘 -> tests/golden/diar/diar_two_speakers/
+  运行：.venv-golden/Scripts/python.exe reference/dump_golden_diar.py
+
+cam++ ONNX 等价性（reference/check_torch_equivalence.py，.venv-diar 运行）
+  lovemefan/campplus onnx/campplus.onnx（27,844,629 字节）
+    vs damo/speech_campplus_sv_zh-cn_16k-common 官方 torch CAMPPlus（同一份
+    knf fbank+均值减特征，绕过 torch 前端纯比权重）：
+  70 个 chunk 余弦 min=1.000000 mean=1.000000，rel L2 max=7e-6
+  结论：EQUIVALENT，Rust 侧可直接用该 ONNX。
+
+模型文件
+  下载源 https://raw.githubusercontent.com/lovemefan/campplus/main/campplus/onnx/campplus.onnx
+  缓存 .dev-cache/models/campplus/campplus.onnx（工作区外，不入库）
+
+测试音频（tests/fixtures/diar_two_speakers.wav，62.4s，16k 单声道 s16）
+  SAPI TTS 长回合交替：Microsoft Huihui Desktop(zh) 15s | 0.8s 静音
+  | Microsoft Zira Desktop(en) 15s | 0.8s | Huihui 15s | 0.8s | Zira 15s
+  源文件 reference/assets/diar_{h1,h2,z1,z2}.wav（生成脚本见 git 历史 tts_diar.ps1，
+  素材不入库则可用 ffmpeg -t 15 从 assets 重新拼）
+  设计理由：短回合（<20 chunk）会命中 FunASR「N<20 全 0」门限；6-NN p-剪枝图
+  在短回合下按回合碎成连通域导致 eigengap 爆炸。长回合 + 交替是真实使用形态。
+
+已知契约偏离（有意）
+  1) k-means：上游 sklearn 无种子不可复现 -> golden 与 Rust 均用
+     MT19937(0) k-means++（n_init=10，Lloyd ≤300 轮，inertia 平局取先达）。
+  2) 特征向量符号：numpy eigh 与 Rust Jacobi 符号不定 -> golden 在
+     diar_common.spectral_cluster 里做符号规范化（每列 |max| 分量为正），
+     Rust 侧必须实现同一规范化，否则 k-means 输入不可复现。
+  3) N>=2048：上游用 umap+hdbscan（不移植），Rust 回退谱聚类（见
+     src/speaker/mod.rs 模块文档）。

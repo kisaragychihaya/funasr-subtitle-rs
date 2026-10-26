@@ -36,6 +36,7 @@ const COPY_SPEC: ModelSpec = ModelSpec {
     engine: EngineKind::SenseVoice,
     supports_hotwords: true,
     local_copies: &[("model_eb.onnx", "model_eb_quant.onnx")],
+    direct: None,
 };
 
 fn write_file(path: &Path, bytes: &[u8]) {

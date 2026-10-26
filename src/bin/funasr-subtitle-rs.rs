@@ -62,6 +62,14 @@ struct Cli {
     #[arg(long = "hotwords", default_value = "")]
     hotwords: String,
 
+    /// 说话人分离（CAM++，自动估计人数；--preset-spk-num 可指定）
+    #[arg(long = "spk", default_value_t = false)]
+    spk: bool,
+
+    /// 预设说话人数（配合 --spk；不指定则自动估计）
+    #[arg(long = "preset-spk-num")]
+    preset_spk_num: Option<usize>,
+
     /// onnxruntime 线程数
     #[arg(long = "threads", default_value_t = 4)]
     threads: usize,
@@ -178,6 +186,8 @@ fn run() -> Result<()> {
         max_cue_ms: cli.max_cue_ms,
         punct,
         hotwords: cli.hotwords.clone(),
+        diarization: cli.spk,
+        preset_spk_num: cli.preset_spk_num,
     };
 
     let on_progress = |stage: &str, pct: f32| {

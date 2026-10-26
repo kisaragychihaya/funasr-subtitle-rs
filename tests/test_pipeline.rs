@@ -85,6 +85,8 @@ fn job(opts: PunctMode) -> JobOptions {
         max_cue_ms: MAX_CUE_MS,
         punct: opts,
         hotwords: String::new(),
+        diarization: false,
+        preset_spk_num: None,
     }
 }
 

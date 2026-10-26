@@ -1,0 +1,114 @@
+{
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 3320,
+      "text": "大家好，欢迎来到今天的分享。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 3690,
+      "end_ms": 7687,
+      "text": "我们今天要聊的是一个非常有趣的话题，",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 7687,
+      "end_ms": 12140,
+      "text": "那就是如何用很少的时间做出高质量的软件。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 12490,
+      "end_ms": 15290,
+      "text": "很多人以为开发工具一定。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 15620,
+      "end_ms": 19180,
+      "text": "hello everyone and thank you for joining us today",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 19500,
+      "end_ms": 23710,
+      "text": "we are going to talk about building useful tools with very little effort",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 24050,
+      "end_ms": 28464,
+      "text": "many people believe that good software has to be complicated but that",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 28464,
+      "end_ms": 29530,
+      "text": "is not true at all",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 29850,
+      "end_ms": 31020,
+      "text": "great tools",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 31510,
+      "end_ms": 36800,
+      "text": "刚才我们讲了基本的方法，现在来看看实际案例。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 37090,
+      "end_ms": 43771,
+      "text": "假设你要给一段录音，自动生成字幕，传统做法需要很多步骤，",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 43771,
+      "end_ms": 45410,
+      "text": "而且容易出错。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 45690,
+      "end_ms": 46860,
+      "text": "新的思。",
+      "speaker": "spk0"
+    },
+    {
+      "start_ms": 47210,
+      "end_ms": 49970,
+      "text": "now let us look at a real world example",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 50300,
+      "end_ms": 53660,
+      "text": "imagine that you want to create subtitles for a recording",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 53660,
+      "end_ms": 54570,
+      "text": "automatically",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 54900,
+      "end_ms": 59230,
+      "text": "the traditional approach takes many steps and often produces mistakes",
+      "speaker": "spk1"
+    },
+    {
+      "start_ms": 59560,
+      "end_ms": 62380,
+      "text": "a better idea is to connect the whole pipeline",
+      "speaker": "spk1"
+    }
+  ],
+  "srt": "1\n00:00:00,000 --> 00:00:03,320\n[spk0] 大家好，欢迎来到今天的分享。\n\n2\n00:00:03,690 --> 00:00:07,687\n[spk0] 我们今天要聊的是一个非常有趣的话题，\n\n3\n00:00:07,687 --> 00:00:12,140\n[spk0] 那就是如何用很少的时间做出高质量的软件。\n\n4\n00:00:12,490 --> 00:00:15,290\n[spk0] 很多人以为开发工具一定。\n\n5\n00:00:15,620 --> 00:00:19,180\n[spk1] hello everyone and thank you for joining us today\n\n6\n00:00:19,500 --> 00:00:23,710\n[spk1] we are going to talk about building useful tools with very little effort\n\n7\n00:00:24,050 --> 00:00:28,464\n[spk1] many people believe that good software has to be complicated but that\n\n8\n00:00:28,464 --> 00:00:29,530\n[spk1] is not true at all\n\n9\n00:00:29,850 --> 00:00:31,020\n[spk1] great tools\n\n10\n00:00:31,510 --> 00:00:36,800\n[spk0] 刚才我们讲了基本的方法，现在来看看实际案例。\n\n11\n00:00:37,090 --> 00:00:43,771\n[spk0] 假设你要给一段录音，自动生成字幕，传统做法需要很多步骤，\n\n12\n00:00:43,771 --> 00:00:45,410\n[spk0] 而且容易出错。\n\n13\n00:00:45,690 --> 00:00:46,860\n[spk0] 新的思。\n\n14\n00:00:47,210 --> 00:00:49,970\n[spk1] now let us look at a real world example\n\n15\n00:00:50,300 --> 00:00:53,660\n[spk1] imagine that you want to create subtitles for a recording\n\n16\n00:00:53,660 --> 00:00:54,570\n[spk1] automatically\n\n17\n00:00:54,900 --> 00:00:59,230\n[spk1] the traditional approach takes many steps and often produces mistakes\n\n18\n00:00:59,560 --> 00:01:02,380\n[spk1] a better idea is to connect the whole pipeline\n",
+  "srt_plain": "1\n00:00:00,000 --> 00:00:03,320\n大家好，欢迎来到今天的分享。\n\n2\n00:00:03,690 --> 00:00:07,687\n我们今天要聊的是一个非常有趣的话题，\n\n3\n00:00:07,687 --> 00:00:12,140\n那就是如何用很少的时间做出高质量的软件。\n\n4\n00:00:12,490 --> 00:00:15,290\n很多人以为开发工具一定。\n\n5\n00:00:15,620 --> 00:00:19,180\nhello everyone and thank you for joining us today\n\n6\n00:00:19,500 --> 00:00:23,710\nwe are going to talk about building useful tools with very little effort\n\n7\n00:00:24,050 --> 00:00:28,464\nmany people believe that good software has to be complicated but that\n\n8\n00:00:28,464 --> 00:00:29,530\nis not true at all\n\n9\n00:00:29,850 --> 00:00:31,020\ngreat tools\n\n10\n00:00:31,510 --> 00:00:36,800\n刚才我们讲了基本的方法，现在来看看实际案例。\n\n11\n00:00:37,090 --> 00:00:43,771\n假设你要给一段录音，自动生成字幕，传统做法需要很多步骤，\n\n12\n00:00:43,771 --> 00:00:45,410\n而且容易出错。\n\n13\n00:00:45,690 --> 00:00:46,860\n新的思。\n\n14\n00:00:47,210 --> 00:00:49,970\nnow let us look at a real world example\n\n15\n00:00:50,300 --> 00:00:53,660\nimagine that you want to create subtitles for a recording\n\n16\n00:00:53,660 --> 00:00:54,570\nautomatically\n\n17\n00:00:54,900 --> 00:00:59,230\nthe traditional approach takes many steps and often produces mistakes\n\n18\n00:00:59,560 --> 00:01:02,380\na better idea is to connect the whole pipeline\n"
+}

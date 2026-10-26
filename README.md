@@ -13,6 +13,7 @@
 - 🎯 三模型可选：SenseVoiceSmall（多语言·默认·快）/ Paraformer-zh（中文高精度）/ Paraformer-zh 热词版
 - 🌐 多语言：中 / 粤 / 英 / 日 / 韩，自动识别或手动指定
 - ✂️ 专业字幕切分：按标点/停顿切句、显示宽度（CJK=1 / 拉丁=0.5）行宽限制、单条 ≤7s、缩写感知断句、cue 严格单调不重叠
+- 👥 说话人分离（可选）：`--spk` 用 CAM++ 标注每句说话人，导出 `[spk0]`/`[spk1]`…（原项目 full/torch 版功能，本移植对全部 ASR 引擎开放）
 - 🔤 标点三模式：`auto`（中文加标点、英文按停顿）/ `on` / `off`
 - 📝 导出 SRT / VTT / TXT / JSON
 
@@ -33,6 +34,8 @@ funasr-subtitle-rs input.mp4 -o out.vtt --format vtt
 funasr-subtitle-rs input.mp4 --language zh --model iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-onnx
 funasr-subtitle-rs input.mp4 --punct off --max-chars 20
 funasr-subtitle-rs input.mp4 --hotwords "机器学习 深度学习"   # 仅热词版模型
+funasr-subtitle-rs meeting.mp4 --spk                          # 说话人分离：每句带 [spkN]
+funasr-subtitle-rs meeting.mp4 --spk --preset-spk-num 3       # 已知 3 位发言人时更稳
 funasr-subtitle-rs input.mp4 -o - --format txt               # 输出到 stdout
 ```
 
@@ -45,6 +48,8 @@ funasr-subtitle-rs input.mp4 -o - --format txt               # 输出到 stdout
 | `--max-chars` | 30 | 每行显示宽度上限（0=不限；CJK=1、拉丁=0.5） |
 | `--max-cue-ms` | 7000 | 单条字幕最长毫秒 |
 | `--hotwords` | 空 | 热词（空格分隔，仅热词版生效） |
+| `--spk` | 关 | 说话人分离（CAM++，自动估计人数；导出 `[spkN]` 前缀） |
+| `--preset-spk-num` | 自动 | 预设说话人数（配合 `--spk`） |
 | `--threads` | 4 | ONNX Runtime 线程数 |
 | `--format` | `srt` | `srt/vtt/txt/json` |
 | `--models-dir` | 见下 | 模型缓存目录 |
@@ -96,11 +101,13 @@ FUNASR_SUBTITLE_MODELS_ROOT=<模型根> cargo test -- --include-ignored --test-t
 
 ## 与原项目的差异
 
-- 去掉 Web UI / 本地服务：纯 CLI；说话人分离（cam++，原 full/torch 版功能）未移植
+- 去掉 Web UI / 本地服务：纯 CLI
+- 说话人分离：原项目仅 full/torch 版 + Paraformer 可用；本移植基于 cam++ ONNX（与官方
+  torch 权重等价性已验证，见 `reference/PINNED_DIAR_VERSIONS.txt`），对全部 ASR 引擎开放
 - 无 GPU 路径（纯 CPU，正是原项目 ONNX 便携包的后端）
-- 模型下载用 ModelScope HTTP API 直拉（不经 modelscope SDK）
+- 模型下载用 ModelScope HTTP API 直拉（不经 modelscope SDK）；cam++ ONNX 从 GitHub 直链下载
 
 ## License
 
-MIT（与原项目一致）。注意预训练模型（SenseVoice / Paraformer / FSMN-VAD / CT-Punc）各有其
-Model License，见对应 ModelScope 模型页；分发模型文件前请逐项确认。
+MIT（与原项目一致）。注意预训练模型（SenseVoice / Paraformer / FSMN-VAD / CT-Punc /
+CAM++）各有其 Model License，见对应 ModelScope 模型页；分发模型文件前请逐项确认。
