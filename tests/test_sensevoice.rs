@@ -303,6 +303,8 @@ fn test_sensevoice_chunk_matches_golden_tokens() {
     let job = JobOptions::default();
     let mut spans_run = 0usize;
     let mut tokens_checked = 0usize;
+    // 第一个 span 的 (fixture, span, chunk, pieces)，用于同进程第二个实例的复跑比对
+    let mut first: Option<(&'static str, usize, Vec<i16>, Vec<TimedPiece>)> = None;
     for fixture in FIXTURES {
         let wave = read_s16(&input_path(fixture));
         for span in span_indices(fixture) {
@@ -381,10 +383,34 @@ fn test_sensevoice_chunk_matches_golden_tokens() {
             );
             spans_run += 1;
             tokens_checked += want.len();
+            if first.as_ref().is_none() {
+                first = Some((fixture, span, chunk.to_vec(), pieces.clone()));
+            }
         }
     }
     assert!(spans_run > 0, "没有跑到任何 span");
     println!(
         "端到端对拍通过：{spans_run} 个 span，{tokens_checked} 个 TimedPiece 的 text 与 ms 全等"
+    );
+
+    // 同进程第二个实例：两处各自建 Environment 会直接失败（ort 只允许一个环境），
+    // 这里锁住「环境共享自 crate::ort_util」这个集成约束。
+    let (fixture, span, chunk, pieces) = first.unwrap_or_else(|| panic!("没有可复跑的 span"));
+    let mut second =
+        SenseVoice::new(&dir, 4).unwrap_or_else(|e| panic!("同进程第二个实例加载失败: {e}"));
+    let out2 = second
+        .transcribe_chunk(&chunk, SR, &job)
+        .unwrap_or_else(|e| panic!("第二个实例推理失败: {e}"));
+    let pieces2 = match out2 {
+        AsrChunkOutput::Timed(p) => p,
+        AsrChunkOutput::Plain(_) => panic!("第二个实例应返回 Timed"),
+    };
+    assert_eq!(
+        pieces2, pieces,
+        "{fixture}/span_{span:03}: 同进程第二个实例的输出应与第一个逐元素一致"
+    );
+    println!(
+        "同进程双实例共存通过：{fixture}/span_{span:03} 两次输出逐元素一致（{} pieces）",
+        pieces2.len()
     );
 }

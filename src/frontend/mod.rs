@@ -38,10 +38,14 @@ pub struct FrontendConfig {
 }
 
 /// CMVN 统计量（读自模型目录 am.mvn）。
+///
+/// 与 Python 口径一致：`load_cmvn` 用 `map(float, ...)` 读成 **float64** 保存
+/// （参考实现 `apply_cmvn` 在 float64 下算完、由 `pad_feats` 统一落 float32）。
+/// 曾因把统计量存 f32 导致 1 ULP 差异、翻转过近 tie 的 CTC 帧，勿回退。
 #[derive(Debug, Clone)]
 pub struct Cmvn {
-    pub mean: Vec<f32>,
-    pub istd: Vec<f32>,
+    pub mean: Vec<f64>,
+    pub istd: Vec<f64>,
 }
 
 /// 提取完成的特征：feats 形状 (T, n_mels * lfr_m)，feats_len = T。
@@ -67,8 +71,8 @@ const LOG_FLOOR: f32 = f32::EPSILON;
 pub fn load_cmvn(path: &Path) -> Result<Cmvn> {
     let text = std::fs::read_to_string(path)?;
     let lines: Vec<&str> = text.lines().collect();
-    let mut mean: Option<Vec<f32>> = None;
-    let mut istd: Option<Vec<f32>> = None;
+    let mut mean: Option<Vec<f64>> = None;
+    let mut istd: Option<Vec<f64>> = None;
 
     for (i, line) in lines.iter().enumerate() {
         let tag = match line.split_whitespace().next() {
@@ -98,7 +102,7 @@ pub fn load_cmvn(path: &Path) -> Result<Cmvn> {
         let mut vals = Vec::with_capacity(next.len() - 4);
         for tok in &next[3..next.len() - 1] {
             let v = tok
-                .parse::<f32>()
+                .parse::<f64>()
                 .map_err(|e| Error::Frontend(format!("am.mvn 里的数值 {tok:?} 无法解析：{e}")))?;
             vals.push(v);
         }
@@ -663,7 +667,7 @@ fn apply_lfr(inputs: &Array2<f32>, lfr_m: usize, lfr_n: usize) -> Result<Array2<
 /// `WavFrontend::apply_cmvn`：`(x + mean) * istd`。
 ///
 /// numpy 里 `inputs` 是 float32、`cmvn` 是 float64，结果在 float64 下算完再落 float32，
-/// 这里保持同样的提升顺序（`Cmvn` 受冻结契约限制只能存 f32）。
+/// 这里保持同样的提升顺序（`Cmvn` 统计量本身就是 f64，见其文档）。
 fn apply_cmvn(inputs: &Array2<f32>, cmvn: &Cmvn) -> Result<Array2<f32>> {
     let dim = inputs.ncols();
     if cmvn.mean.len() != cmvn.istd.len() {
@@ -682,7 +686,7 @@ fn apply_cmvn(inputs: &Array2<f32>, cmvn: &Cmvn) -> Result<Array2<f32>> {
     let mut out = inputs.to_owned();
     for mut row in out.rows_mut() {
         for (d, v) in row.iter_mut().enumerate() {
-            *v = ((*v as f64 + cmvn.mean[d] as f64) * cmvn.istd[d] as f64) as f32;
+            *v = ((f64::from(*v) + cmvn.mean[d]) * cmvn.istd[d]) as f32;
         }
     }
     Ok(out)

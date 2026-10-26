@@ -13,11 +13,13 @@
 //! - `SpModel` ← `SentencePieceProcessor.id_to_piece` 的只读子集：直接解析 `.bpe.model`
 //!   （protobuf `ModelProto`）的 `pieces`，下标即 id（最小 protobuf 解析，不引依赖）。
 //!
-//! CMVN：参考实现的统计量是 **float64**（`frontend.py::load_cmvn` 的 `np.array(list(map(float, ...)))`），
-//! `apply_cmvn` 也在 float64 下算完、由 `pad_feats` 统一落 float32。`frontend::Cmvn` 把统计量存成
-//! f32，会让 feats 与 golden 差 1 ULP（max 4.77e-7），恰好翻转 `sample_en_runon` 上一个近 tie
-//! 的 CTC 帧。因此本模块按源码口径用 `Cmvn64`（f64）自行应用 CMVN；`frontend::Cmvn` 改为 f64 后
-//! 这一段即可删掉。
+//! CMVN：`frontend::Cmvn` 已按源码口径存 float64（`load_cmvn` 的 `map(float, ...)`），
+//! `apply_cmvn` 在 float64 下算完再落 float32——与本模块此前自证的 `Cmvn64` 行为一致，
+//! 因此直接复用 `frontend` 的实现（曾因统计量存 f32 差 1 ULP 翻转近 tie 的 CTC 帧，
+//! 见 `frontend::Cmvn` 文档，勿回退）。
+//!
+//! ONNX Runtime 环境共享自 `crate::ort_util`（ort 每进程只允许一个 `Environment`，
+//! 多引擎同进程共存必须共用它）。
 //!
 //! 时间口径：Python 侧是 `int(span_start_ms + rel*span_ms)`（绝对毫秒）。`transcribe_chunk`
 //! 只拿得到一个语音段、没有绝对偏移，因此这里产出**段内相对毫秒**（段首 = 0），由 pipeline
@@ -26,17 +28,14 @@
 
 use std::fs;
 use std::path::Path;
-use std::sync::OnceLock;
 
 use ndarray::Array2;
-use ort::environment::Environment;
 use ort::session::Session;
-use ort::session::builder::GraphOptimizationLevel;
 use ort::value::Value;
 
 use crate::asr::{AsrChunkOutput, AsrEngine};
 use crate::error::{Error, Result};
-use crate::frontend::{FrontendConfig, extract_features, sensevoice_frontend};
+use crate::frontend::{Cmvn, FrontendConfig, extract_features, load_cmvn, sensevoice_frontend};
 use crate::types::{EngineKind, JobOptions, Language, TimedPiece};
 
 /// 量化模型文件名（funasr 侧固定 `quantize=True`）。
@@ -183,82 +182,6 @@ pub fn token_time_ms(frame: usize, enc_len: usize, span_start_ms: i64, span_end_
 }
 
 // ---------------------------------------------------------------- CMVN
-
-/// CMVN 统计量，**float64**（Python `frontend.py::load_cmvn` 返回的就是 float64，
-/// `apply_cmvn` 也在 float64 下算完才在 `pad_feats` 里落 float32）。
-///
-/// 为什么不用 `frontend::Cmvn`：那里受结构体字段类型限制把统计量存成 f32，CMVN 因此
-/// 与参考实现差 1 ULP（实测 feats max|diff|=4.77e-7，仅约 1/3 的值逐位相同）。
-/// 这点差在 `sample_en_runon` 上正好把一个近 tie 的 CTC 帧翻成别的 token，导致 token
-/// 序列与 golden 不一致；改用 float64 后 feats 与 golden 逐位相同（0 差异）。
-/// 若 `frontend::Cmvn` 今后改为 f64，本段（含 `load_cmvn_f64`/`apply_cmvn_f64`）可以删掉，
-/// 直接改回 `extract_features(chunk, sr, cfg, Some(&cmvn))`。
-struct Cmvn64 {
-    mean: Vec<f64>,
-    istd: Vec<f64>,
-}
-
-/// 读 am.mvn：格式与 `frontend.py::load_cmvn` 一致——`<AddShift>` / `<Rescale>` 行的
-/// 下一行是 `<LearnRateCoef> 0 [ v0 v1 ... vN ]`，取 `[3 .. len-1]` 之间的数值。
-fn load_cmvn_f64(path: &Path) -> Result<Cmvn64> {
-    let text = fs::read_to_string(path)?;
-    let lines: Vec<&str> = text.lines().collect();
-    let mut mean: Option<Vec<f64>> = None;
-    let mut istd: Option<Vec<f64>> = None;
-    for (i, line) in lines.iter().enumerate() {
-        let tag = match line.split_whitespace().next() {
-            Some(t) => t,
-            None => continue,
-        };
-        let slot = match tag {
-            "<AddShift>" => &mut mean,
-            "<Rescale>" => &mut istd,
-            _ => continue,
-        };
-        let next: Vec<&str> = match lines.get(i + 1) {
-            Some(l) => l.split_whitespace().collect(),
-            None => continue,
-        };
-        if next.first().copied() != Some("<LearnRateCoef>") || next.len() < 5 {
-            continue;
-        }
-        let mut vals = Vec::with_capacity(next.len() - 4);
-        for tok in &next[3..next.len() - 1] {
-            let v = tok
-                .parse::<f64>()
-                .map_err(|e| Error::Model(format!("am.mvn 里的数值 {tok:?} 无法解析：{e}")))?;
-            vals.push(v);
-        }
-        *slot = Some(vals);
-    }
-    match (mean, istd) {
-        (Some(m), Some(v)) if !m.is_empty() && m.len() == v.len() => {
-            Ok(Cmvn64 { mean: m, istd: v })
-        }
-        _ => Err(Error::Model(format!(
-            "am.mvn 缺少 <AddShift>/<Rescale> 或两者维度不一致：{}",
-            path.display()
-        ))),
-    }
-}
-
-/// `WavFrontend.apply_cmvn`：`(x + mean) * istd`，float64 下算完再落 float32。
-fn apply_cmvn_f64(feats: &Array2<f32>, cmvn: &Cmvn64) -> Result<Array2<f32>> {
-    let dim = feats.ncols();
-    if cmvn.mean.len() < dim || cmvn.istd.len() < dim {
-        return Err(Error::Frontend(format!(
-            "cmvn 维度 {} 小于特征维度 {dim}",
-            cmvn.mean.len().min(cmvn.istd.len())
-        )));
-    }
-    let mut out = feats.to_owned();
-    for mut row in out.rows_mut() {
-        for (d, v) in row.iter_mut().enumerate() {
-            *v = ((f64::from(*v) + cmvn.mean[d]) * cmvn.istd[d]) as f32;
-        }
-    }
-    Ok(out)
-}
 
 // ---------------------------------------------------------------- sentencepiece
 
@@ -436,30 +359,6 @@ impl<'a> PbReader<'a> {
 
 // ---------------------------------------------------------------- 引擎本体
 
-/// 进程级 ONNX Runtime 环境（ort 每进程只允许一个 Environment）。
-///
-/// 注意：其他模块若各自建 Environment，后建的那一方会失败（ort 会返回
-/// "only one environment is allowed per process"）。这里把错误显式上抛，
-/// 不做静默降级；统一到共享 helper 时可直接改调用点。
-fn ort_environment() -> Result<Environment> {
-    static ENV: OnceLock<Environment> = OnceLock::new();
-    if let Some(env) = ENV.get() {
-        return Ok(env.clone());
-    }
-    let env = ort::init()
-        .with_name("funasr-subtitle-rs")
-        .build()
-        .map_err(|e| {
-            Error::Model(format!(
-                "初始化 ONNX Runtime 失败（每进程只允许一个 Environment）: {e}"
-            ))
-        })?;
-    let _ = ENV.set(env);
-    ENV.get()
-        .cloned()
-        .ok_or_else(|| Error::Model("初始化 ONNX Runtime 失败".to_string()))
-}
-
 /// 一次推理的解码结果：`(token_id, frame)` 序列、有效编码帧数 T、词表大小。
 type CtcPairs = (Vec<(usize, usize)>, usize, usize);
 
@@ -470,8 +369,8 @@ pub struct SenseVoice {
     pieces: SpModel,
     /// 前端参数（`WavFrontend(**config["frontend_conf"])`）。
     cfg: FrontendConfig,
-    /// CMVN 统计量（`am.mvn`，float64；见 `Cmvn64` 的说明）。
-    cmvn: Cmvn64,
+    /// CMVN 统计量（`am.mvn`，float64 存储——见 `frontend::Cmvn` 文档）。
+    cmvn: Cmvn,
     /// 输入名按模型声明顺序保存：Python 侧 `zip(get_input_names(), [feats, len, lid, tn])`
     /// 就是按声明顺序喂的，这里保持同样的语义。
     input_names: [String; INPUT_COUNT],
@@ -487,26 +386,11 @@ impl SenseVoice {
             )));
         }
         let pieces = SpModel::load(&model_dir.join(BPE_FILE))?;
-        let cmvn = load_cmvn_f64(&model_dir.join(CMVN_FILE))?;
+        let cmvn = load_cmvn(&model_dir.join(CMVN_FILE))?;
         let cfg = sensevoice_frontend();
 
-        let env = ort_environment()?;
-        let builder = Session::builder(&env)
-            .map_err(|e| Error::Model(format!("创建 ONNX Session 失败: {e}")))?;
-        let mut builder = builder
-            .with_intra_threads(threads)
-            .map_err(|e| Error::Model(format!("设置 intra_op 线程数失败: {e}")))?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(|e| Error::Model(format!("设置图优化级别失败: {e}")))?
-            // 对齐 funasr 的 log_severity_level=4（只保留 FATAL）
-            .with_log_level(ort::logging::LogLevel::Fatal)
-            .map_err(|e| Error::Model(format!("设置日志级别失败: {e}")))?;
-        let session = builder.commit_from_file(&model_file).map_err(|e| {
-            Error::Model(format!(
-                "加载 SenseVoice 模型 {} 失败: {e}",
-                model_file.display()
-            ))
-        })?;
+        // 环境共享自 crate::ort_util（ort 每进程只允许一个 Environment，多引擎同进程共存靠它）
+        let session = crate::ort_util::build_session(&model_file, threads)?;
 
         let input_names: Vec<String> = session
             .inputs()
@@ -626,14 +510,14 @@ impl AsrEngine for SenseVoice {
         sample_rate: u32,
         job: &JobOptions,
     ) -> Result<AsrChunkOutput> {
-        // extract_feat：fbank → LFR → CMVN（顺序与 vendored 源码一致；CMVN 见 Cmvn64 说明）
-        let lfr = extract_features(chunk, sample_rate, &self.cfg, None)?;
-        let feats = apply_cmvn_f64(&lfr.feats, &self.cmvn)?;
+        // extract_feat：fbank → LFR → CMVN（顺序与 vendored 源码一致；CMVN 在 float64 下
+        // 应用后落 float32，见 `frontend::Cmvn` 文档）
+        let feats = extract_features(chunk, sample_rate, &self.cfg, Some(&self.cmvn))?;
 
         // read_tags：language → lid，textnorm 固定 withitn
         let lid = lid_for(job.language)?;
         let tn = textnorm_for_name("withitn")?;
-        let (pairs, enc_len, _vocab) = self.infer_pairs(&feats, lid, tn)?;
+        let (pairs, enc_len, _vocab) = self.infer_pairs(&feats.feats, lid, tn)?;
 
         // 段内相对时间：段首 0、段尾 = 本段时长（VAD span 为 10ms 整数倍时与 Python 的
         // 绝对 span 等价，见模块文档）
@@ -842,9 +726,10 @@ mod tests {
         Ok((dir, path))
     }
 
-    /// am.mvn 要按 float64 读：这些值存成 f32 会各差不到 1 ULP，实测足以翻转 CTC 帧。
+    /// am.mvn 要按 float64 读（`frontend::Cmvn` 已保证）：这些值存成 f32 会各差不到
+    /// 1 ULP，实测足以翻转近 tie 的 CTC 帧。
     #[test]
-    fn load_cmvn_f64_keeps_double_precision() {
+    fn load_cmvn_keeps_double_precision() {
         let text = "<Nnet> \n<Splice> 3 3\n[ 0 ]\n<AddShift> 3 3 \n\
                     <LearnRateCoef> 0 [ -1.5000000000000002 0.25 2 ] \n<Rescale> 3 3\n\
                     <LearnRateCoef> 0 [ 0.5000000000000001 2 0.125 ] \n";
@@ -852,9 +737,9 @@ mod tests {
             Ok(v) => v,
             Err(e) => panic!("准备 am.mvn 失败: {e}"),
         };
-        let cmvn = match load_cmvn_f64(&path) {
+        let cmvn = match load_cmvn(&path) {
             Ok(c) => c,
-            Err(e) => panic!("load_cmvn_f64 失败: {e}"),
+            Err(e) => panic!("load_cmvn 失败: {e}"),
         };
         assert_eq!(cmvn.mean, vec![-1.500_000_000_000_000_2, 0.25, 2.0]);
         assert_eq!(cmvn.istd, vec![0.500_000_000_000_000_1, 2.0, 0.125]);
@@ -863,36 +748,12 @@ mod tests {
     }
 
     #[test]
-    fn apply_cmvn_f64_matches_reference_formula() {
-        let feats = Array2::from_shape_vec((2, 2), vec![1.0f32, 2.0, 3.0, 4.0])
-            .unwrap_or_else(|e| panic!("构造特征失败: {e}"));
-        let cmvn = Cmvn64 {
-            mean: vec![-1.5, 0.25],
-            istd: vec![0.5, 2.0],
-        };
-        let out = match apply_cmvn_f64(&feats, &cmvn) {
-            Ok(o) => o,
-            Err(e) => panic!("apply_cmvn_f64 失败: {e}"),
-        };
-        // (1-1.5)*0.5 = -0.25, (2+0.25)*2 = 4.5, (3-1.5)*0.5 = 0.75, (4+0.25)*2 = 8.5
-        assert_eq!(out.row(0).to_vec(), vec![-0.25, 4.5]);
-        assert_eq!(out.row(1).to_vec(), vec![0.75, 8.5]);
-
-        // 维度不足要报错
-        let narrow = Cmvn64 {
-            mean: vec![0.0],
-            istd: vec![1.0],
-        };
-        assert!(apply_cmvn_f64(&feats, &narrow).is_err());
-    }
-
-    #[test]
-    fn load_cmvn_f64_rejects_broken_files() {
-        assert!(load_cmvn_f64(Path::new("definitely/not/here.mvn")).is_err());
+    fn load_cmvn_rejects_broken_files() {
+        assert!(load_cmvn(Path::new("definitely/not/here.mvn")).is_err());
         let (_d, p) = match write_cmvn("<AddShift> 2 2\n<LearnRateCoef> 0 [ 1 ]\n") {
             Ok(v) => v,
             Err(e) => panic!("{e}"),
         };
-        assert!(load_cmvn_f64(&p).is_err(), "缺 <Rescale> 应报错");
+        assert!(load_cmvn(&p).is_err(), "缺 <Rescale> 应报错");
     }
 }
