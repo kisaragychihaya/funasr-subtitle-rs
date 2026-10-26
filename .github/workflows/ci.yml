@@ -170,3 +170,78 @@ jobs:
           restore-keys: models-v1-
       - name: 真实模型对拍（含 #[ignore]）
         run: cargo test --locked -- --include-ignored --test-threads=1
+
+
+  # 打 tag（v*）时发布 Release：五平台 release 构建 + 打包 + 建 Release（产物同名附加平台 triple）。
+  # 依赖 check/test 先绿，保证发出去的包过得了 golden 门禁。
+  release:
+    name: 发布 ${{ matrix.target }}
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check, test]
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-15
+            target: aarch64-apple-darwin
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    env:
+      # 与 test job 一致：ort 的 macOS arm64 预编译库按 macOS 13.4 构建
+      MACOSX_DEPLOYMENT_TARGET: "13.4"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # release(LTO) 链接需要 compiler-rt（同 test job 的说明）
+      - name: macOS 链接 compiler-rt（ort CoreML 对象）
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          RT=$(ls /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/*/lib/darwin/libclang_rt.osx.a 2>/dev/null | head -n1)
+          if [ -z "$RT" ]; then echo "::error::找不到 libclang_rt.osx.a"; exit 1; fi
+          echo "RUSTFLAGS=-C link-arg=$RT" >> "$GITHUB_ENV"
+
+      - name: release 构建
+        run: cargo build --release --locked
+
+      # 打包：Windows 出 zip，其余 tar.gz；附带 README 与 LICENSE
+      - name: 打包产物
+        shell: bash
+        run: |
+          set -e
+          NAME="funasr-subtitle-rs-${{ github.ref_name }}-${{ matrix.target }}"
+          mkdir -p "dist/$NAME"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            EXE="target/release/funasr-subtitle-rs.exe"
+          else
+            EXE="target/release/funasr-subtitle-rs"
+          fi
+          cp "$EXE" "dist/$NAME/"
+          cp README.md LICENSE "dist/$NAME/"
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            powershell -NoProfile -Command "Compress-Archive -Path '$NAME' -DestinationPath '$NAME.zip'"
+          else
+            tar -czf "$NAME.tar.gz" "$NAME"
+          fi
+          ls -lh dist 2>/dev/null || ls -lh .
+        working-directory: .
+
+      - name: 创建 GitHub Release 并上传产物
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/*.zip
+            dist/*.tar.gz
