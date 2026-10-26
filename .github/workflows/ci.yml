@@ -15,6 +15,7 @@ name: ci
 on:
   push:
     branches: [main]
+    tags: ['v*']   # 注意：push 里写了 branches 就必须显式列 tags，否则 tag 推送不触发
   pull_request:
   workflow_dispatch:
 
