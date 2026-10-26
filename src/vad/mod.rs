@@ -37,7 +37,6 @@
 //! 不足一帧时 `break` 而不是原地打转，见该函数注释。
 
 use std::path::Path;
-use std::sync::OnceLock;
 
 use ort::environment::Environment;
 use ort::session::Session;
@@ -865,21 +864,9 @@ impl E2EVad {
 
 // ---------------------------------------------------------------- ONNX
 
-/// 进程级 ONNX Runtime 环境（ort 每进程只允许一个 `Environment`）。
+/// 进程级 ONNX Runtime 环境（共享自 `crate::ort_util`，ort 每进程只允许一个）。
 fn ort_environment() -> Result<Environment> {
-    static ENV: OnceLock<Environment> = OnceLock::new();
-    if let Some(env) = ENV.get() {
-        return Ok(env.clone());
-    }
-    let env = ort::init()
-        .with_name("funasr-subtitle-rs")
-        .build()
-        .map_err(|e| Error::Model(format!("初始化 ONNX Runtime 失败: {e}")))?;
-    // 并发首建时以先到者为准（第二个 Environment 建不出来，丢弃即可）
-    let _ = ENV.set(env);
-    ENV.get()
-        .cloned()
-        .ok_or_else(|| Error::Model("初始化 ONNX Runtime 失败".to_string()))
+    crate::ort_util::ort_environment()
 }
 
 // ---------------------------------------------------------------- 对外接口

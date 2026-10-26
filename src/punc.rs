@@ -20,7 +20,6 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use std::sync::OnceLock;
 
 use ort::environment::Environment;
 use ort::session::Session;
@@ -211,21 +210,9 @@ fn char_eq_ignore_case(a: char, b: char) -> bool {
     a == b || a.to_lowercase().eq(b.to_lowercase())
 }
 
-/// 进程级 ONNX Runtime 环境（ort 每进程只允许一个 Environment）。
+/// 进程级 ONNX Runtime 环境（共享自 `crate::ort_util`，ort 每进程只允许一个）。
 fn ort_environment() -> Result<Environment> {
-    static ENV: OnceLock<Environment> = OnceLock::new();
-    if let Some(env) = ENV.get() {
-        return Ok(env.clone());
-    }
-    let env = ort::init()
-        .with_name("funasr-subtitle-rs")
-        .build()
-        .map_err(|e| Error::Model(format!("初始化 ONNX Runtime 失败: {e}")))?;
-    // 并发首建时以先到者为准（第二个 Environment 建不出来，丢弃即可）
-    let _ = ENV.set(env);
-    ENV.get()
-        .cloned()
-        .ok_or_else(|| Error::Model("初始化 ONNX Runtime 失败".to_string()))
+    crate::ort_util::ort_environment()
 }
 
 /// CT-Transformer 本体（`punc_bin.py` 的 `CT_Transformer`）。

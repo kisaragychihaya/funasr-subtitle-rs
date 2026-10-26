@@ -9,6 +9,7 @@ pub mod export;
 pub mod frontend;
 pub mod media;
 pub mod models;
+pub mod ort_util;
 pub mod pipeline;
 pub mod punc;
 pub mod text;
