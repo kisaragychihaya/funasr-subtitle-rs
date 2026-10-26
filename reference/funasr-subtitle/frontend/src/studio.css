@@ -1,0 +1,188 @@
+:root {
+  --bg: #141210;
+  --amber: #e8a33d;
+  --amber-soft: #f0be6e;
+  --text-dim: #a89c86;
+  --border: #3a342b;
+  --rec: #e5544b;
+  --mono: "Space Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: #ece4d5;
+  /* 暖光晕 + 顶部微亮，制造录音棚里的灯光氛围 */
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, rgba(232, 163, 61, 0.10), transparent 60%),
+    radial-gradient(80% 60% at 100% 0%, rgba(120, 80, 40, 0.08), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* 颗粒噪点叠层 + 极淡的横向「磁带走带」纹理 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+  background-image: repeating-linear-gradient(
+    0deg, transparent 0 3px, rgba(0, 0, 0, 0.12) 3px 4px
+  );
+  mask-image: linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent);
+}
+
+/* ---- 字体工具类 ---- */
+.mono { font-family: var(--mono); font-feature-settings: "tnum"; }
+.nowrap { white-space: nowrap; }
+.ts { font-family: var(--mono); color: var(--amber-soft); letter-spacing: -0.02em; }
+.label-cap {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+/* 拉丁小标靠字距撑开；中文被同样的字距拆成散字，所以中文段单独收到 .06em。 */
+.label-cap .cap-cn { letter-spacing: 0.06em; text-transform: none; }
+
+/* ---- 破坏性文字钮：antd 的 text 变体会把 #E5544B 派生成暗红（3.5:1），这里钉回主题红。
+       页眉那一带压在暖光晕上（实测底 rgb(39,33,24)），所以用比 --rec 更亮一档的红才过 4.5。---- */
+.btn-exit { color: #EE6B62 !important; }
+.btn-exit:hover { color: #F58379 !important; background: rgba(229, 84, 75, 0.10) !important; }
+
+/* filled 主色钮：默认前景是派生的暗琥珀压在暗琥珀底上只有 3.5:1，提亮到 amberSoft。 */
+.ant-btn-color-primary.ant-btn-variant-filled { color: var(--amber-soft); border-color: #6B5326; }
+.ant-btn-color-primary.ant-btn-variant-filled:hover { color: #FFD98F; background: rgba(232, 163, 61, 0.16); }
+
+/* 禁用态：读得出「按钮在这儿，但还没就绪」，而不是像坏掉（默认白字 25% 只有 2.2:1）。 */
+.ant-btn-color-primary.ant-btn-variant-solid:disabled,
+.ant-btn-color-primary.ant-btn-variant-solid.ant-btn-disabled {
+  color: var(--text-dim) !important;
+  background: rgba(232, 163, 61, 0.14) !important;
+  border-color: #5A4A2A !important;
+}
+.ant-btn-color-primary.ant-btn-variant-solid:disabled .anticon,
+.ant-btn-color-primary.ant-btn-variant-solid.ant-btn-disabled .anticon { color: var(--text-dim) !important; }
+
+/* 键盘焦点环：antd 的 controlOutline 是 alias（由 colorPrimaryBg 混出来，用户 token 改不动），
+   在暖炭底上只有 1.7:1。这里显式给一圈琥珀实线，和输入框的聚焦语言一致。 */
+.ant-btn:focus-visible,
+.ant-segmented:focus-visible,
+.ant-upload-btn:focus-visible,
+.ant-switch:focus-visible,
+.ant-select:focus-visible .ant-select-selector {
+  outline: 2px solid var(--amber) !important;
+  outline-offset: 2px !important;
+}
+
+/* 正文里的链接别用派生暗琥珀（压在卡底上读不清），提亮到 amberSoft。 */
+.ant-typography a { color: var(--amber-soft); }
+.ant-typography a:hover { color: #FFD98F; }
+
+/* 禁用输入框的占位符：字段本身灰着，但格式说明还得读得清。 */
+.ant-input:disabled::placeholder,
+.ant-input[disabled]::placeholder { color: var(--text-dim); }
+
+/* 进行中别把整颗主键压暗：变暗后它与「禁用」几乎同形，唯一说明在干活的文字反而更不显。 */
+.ant-btn.ant-btn-loading { opacity: 1; }
+
+/* 开关视觉尺寸不动，命中区补到 38px 高（小开关 44×22 不好点）。 */
+.switch-hit { display: inline-flex; padding: 8px 6px; margin: -8px -6px; }
+
+/* ---- 品牌字牌 + REC 圆点 ---- */
+.wordmark {
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.rec-dot {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 10px rgba(232, 163, 61, 0.8);
+  animation: rec-pulse 2.2s ease-in-out infinite;
+}
+.rec-dot.live { background: #e5544b; box-shadow: 0 0 12px rgba(229, 84, 75, 0.9); animation-duration: 1s; }
+@keyframes rec-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ---- 入场：错峰淡入上移 ---- */
+.rise { opacity: 0; transform: translateY(10px); animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.rise.d1 { animation-delay: 0.05s; }
+.rise.d2 { animation-delay: 0.12s; }
+.rise.d3 { animation-delay: 0.2s; }
+.rise.d4 { animation-delay: 0.28s; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+/* ---- 拖放区里的均衡器条（装饰动效） ---- */
+.eq { display: inline-flex; align-items: flex-end; gap: 3px; height: 26px; }
+.eq i {
+  width: 3px; background: var(--amber); border-radius: 2px; opacity: 0.85;
+  animation: eq 1.1s ease-in-out infinite;
+}
+.eq i:nth-child(1) { height: 40%; animation-delay: 0s; }
+.eq i:nth-child(2) { height: 80%; animation-delay: 0.15s; }
+.eq i:nth-child(3) { height: 55%; animation-delay: 0.3s; }
+.eq i:nth-child(4) { height: 100%; animation-delay: 0.1s; }
+.eq i:nth-child(5) { height: 65%; animation-delay: 0.25s; }
+@keyframes eq { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+
+/* ---- 分段结果：左侧磁带黄轴线 ---- */
+.seg-row {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(58, 52, 43, 0.5);
+}
+.seg-row:hover { background: rgba(232, 163, 61, 0.04); }
+.seg-text { line-height: 1.7; }
+
+/* ---- 拖放区：hover / 拖入都要看得出（内联 borderColor 会吃掉 antd 的 :hover，所以边框交给这里）---- */
+.ant-upload.ant-upload-drag.drop-zone { border-color: var(--border); transition: border-color .18s, background .18s; }
+.ant-upload.ant-upload-drag.drop-zone:hover { border-color: var(--amber); background: rgba(232, 163, 61, 0.05); }
+.ant-upload.ant-upload-drag.drop-zone.ant-upload-drag-hover {
+  border-color: var(--amber); border-style: solid; background: rgba(232, 163, 61, 0.12);
+}
+.ant-upload.ant-upload-drag.drop-zone.ant-upload-drag-hover .label-hint { color: var(--amber-soft); }
+
+/* ---- 结果列表内滚：底部渐隐，提示「下面还有」（仅在真的还能滚时挂上，见 ResultsPanel）---- */
+.scroll-fade {
+  mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 34px), transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 34px), transparent 100%);
+}
+
+/* ---- 窄屏：时间码列让位给正文；语言分段内部横滚 ---- */
+@media (max-width: 520px) {
+  .seg-row { grid-template-columns: 104px 1fr; gap: 10px; }
+  .seg-scroll {
+    max-width: 100%; min-width: 0;
+    overflow-x: auto; scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent 100%);
+  }
+  .seg-scroll::-webkit-scrollbar { display: none; }
+}
+
+/* ---- 滚动条 ---- */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #322c24; border-radius: 6px; border: 2px solid var(--bg); }
+*::-webkit-scrollbar-thumb:hover { background: #463e32; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .rec-dot, .eq i { animation: none; opacity: 1; transform: none; }
+}

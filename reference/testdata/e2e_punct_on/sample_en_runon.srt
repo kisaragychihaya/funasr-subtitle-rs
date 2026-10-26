@@ -1,0 +1,15 @@
+1
+00:00:00,060 --> 00:00:03,302
+So the thing about neural networks is that they learn patterns from data
+
+2
+00:00:03,302 --> 00:00:06,604
+and once you have enough data you can train a model that generalizes pretty
+
+3
+00:00:06,604 --> 00:00:09,907
+well to new examples, which is exactly what we want when we build these systems
+
+4
+00:00:09,907 --> 00:00:13,390
+for real worldor applications like translation and speech recognition.

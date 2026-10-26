@@ -1,0 +1,54 @@
+{
+  "generated_by": "funasr-subtitle-rs/reference/testdata/gen_punct_modes.py",
+  "reference_impl": "github.com/rockbenben/funasr-subtitle (backend/app) FunasrEngine.transcribe",
+  "why": "tests/golden 只有 punct=auto 的 output.srt；on/off 两种模式的期望值用同一参考引擎现场生成，只改 JobOptions.punctuation。",
+  "params": {
+    "sample_rate": 16000,
+    "model_id": "iic/SenseVoiceSmall-onnx",
+    "max_chars": 30,
+    "punct_modes": [
+      "on",
+      "off"
+    ],
+    "language": "auto",
+    "quantize": true,
+    "device": "cpu",
+    "fbank_dither": 0.0
+  },
+  "dither_pinned": {
+    "asr_dither_from": 1.0,
+    "vad_dither_from": 0.0
+  },
+  "files": [
+    {
+      "path": "e2e_punct_on/sample_zh.srt",
+      "bytes": 175,
+      "segments": 2
+    },
+    {
+      "path": "e2e_punct_on/sample_en_runon.srt",
+      "bytes": 431,
+      "segments": 4
+    },
+    {
+      "path": "e2e_punct_on/sample_long.srt",
+      "bytes": 447,
+      "segments": 4
+    },
+    {
+      "path": "e2e_punct_off/sample_zh.srt",
+      "bytes": 169,
+      "segments": 2
+    },
+    {
+      "path": "e2e_punct_off/sample_en_runon.srt",
+      "bytes": 430,
+      "segments": 4
+    },
+    {
+      "path": "e2e_punct_off/sample_long.srt",
+      "bytes": 441,
+      "segments": 4
+    }
+  ]
+}
