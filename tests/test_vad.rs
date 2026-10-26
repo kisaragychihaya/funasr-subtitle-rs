@@ -37,8 +37,10 @@ fn read_json<T: serde::de::DeserializeOwned>(rel: &str) -> T {
 fn read_s16(rel: &str) -> Vec<i16> {
     let path = manifest_path(rel);
     let raw = fs::read(&path).unwrap_or_else(|e| panic!("读取 {} 失败: {e}", path.display()));
-    raw.chunks_exact(2)
-        .map(|c| i16::from_le_bytes([c[0], c[1]]))
+    raw.as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| i16::from_le_bytes(*c))
         .collect()
 }
 

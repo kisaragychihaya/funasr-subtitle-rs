@@ -99,16 +99,20 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> T {
 fn read_s16(path: &Path) -> Vec<i16> {
     let bytes = fs::read(path).unwrap_or_else(|e| panic!("读取 {} 失败: {e}", path.display()));
     bytes
-        .chunks_exact(2)
-        .map(|c| i16::from_le_bytes([c[0], c[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| i16::from_le_bytes(*c))
         .collect()
 }
 
 fn read_f32(path: &Path) -> Vec<f32> {
     let bytes = fs::read(path).unwrap_or_else(|e| panic!("读取 {} 失败: {e}", path.display()));
     bytes
-        .chunks_exact(4)
-        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| f32::from_le_bytes(*c))
         .collect()
 }
 
