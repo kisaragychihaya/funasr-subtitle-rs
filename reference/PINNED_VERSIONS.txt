@@ -59,7 +59,7 @@ vendor 的 funasr-onnx 源码
 
 参考实现源码
   reference/funasr-subtitle/  = github.com/rockbenben/funasr-subtitle
-  git clone --depth 1，HEAD commit 见 reference/funasr-subtitle/.git
+  git clone --depth 1，HEAD commit = 5fe864fc96248879ccaac2d252b1ae5d00c17b93 (main)
 
 模型（modelscope，缓存目录 %LOCALAPPDATA%\funasr-subtitle\models，共约 1.6 GB）
   iic/speech_fsmn_vad_zh-cn-16k-common-onnx                                   (VAD, model_quant.onnx)
