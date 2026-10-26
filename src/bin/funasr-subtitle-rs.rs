@@ -70,7 +70,7 @@ struct Cli {
     #[arg(long = "format", default_value = "srt")]
     format: String,
 
-    /// 模型缓存目录（缺省用系统缓存目录）
+    /// 模型缓存目录（缺省读环境变量 FUNASR_SUBTITLE_MODELS_ROOT，再退回系统缓存目录）
     #[arg(long = "models-dir")]
     models_dir: Option<PathBuf>,
 }
@@ -160,7 +160,11 @@ fn run() -> Result<()> {
     }
 
     // 2) 转写
-    let models_root = cli.models_dir.clone().unwrap_or_else(default_models_root);
+    let models_root = cli.models_dir.clone().unwrap_or_else(|| {
+        std::env::var("FUNASR_SUBTITLE_MODELS_ROOT")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| default_models_root())
+    });
     let mut engine = Engine::new(EngineOptions {
         model_id: cli.model.clone(),
         models_root,
