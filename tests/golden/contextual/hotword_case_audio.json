@@ -1,0 +1,10 @@
+{
+  "sentence": "我们正在学习机器学习的基础知识",
+  "samples": 66531,
+  "sample_rate": 16000,
+  "duration_ms": 4158,
+  "dtype": "int16",
+  "endianness": "little",
+  "file": "hotword_case.s16bin",
+  "tts": "Windows SAPI / Microsoft Huihui Desktop (zh-CN)，源 wav 缓存在 reference/assets/"
+}

@@ -1,0 +1,70 @@
+funasr-subtitle-rs golden harness —— 固定版本记录
+=================================================
+生成方式：工作区根 .venv-golden（pip freeze 实录）。日期见下方采集时间。
+
+采集时间（本地）
+  python: 2026-10-26
+
+Python 解释器
+  Python 3.12.3 (MSC v.1938 64 bit / AMD64)  —— 注意：参考实现 pyproject 写
+  requires-python ">=3.11,<3.12"，但本机只有 3.12.3（py -3.11 不可用），
+  实测 app.* 全部模块在 3.12 下可导入/推理正常。
+
+推理栈（pip 实际解析出的版本）
+  funasr-onnx            0.4.3
+  onnxruntime            1.31.0        （纯 CPU；available providers =
+                                        ['AzureExecutionProvider', 'CPUExecutionProvider']，
+                                         无 DmlExecutionProvider / CUDA，符合预期）
+  kaldi-native-fbank     1.22.4
+  sentencepiece          0.2.2
+  numpy                  1.26.4        （funasr-onnx 声明 numpy<=1.26.4，不要升 2）
+  scipy                  1.17.1
+  librosa                0.11.0
+  numba                  0.68.0
+  jieba                  0.42.1        （ct-punc 的 code_mix_split_words_jieba 用）
+  soundfile              0.14.0        （本 harness 实际不依赖它，wav 走 ffmpeg）
+
+模型下载 / 应用依赖
+  modelscope             1.37.1        ★ 必须钉 <1.38
+  modelscope-hub         0.5.0         （modelscope 1.37.1 的依赖）
+  platformdirs           4.13.5
+  pydantic               2.14.1
+  pydantic_core          2.50.1
+
+★ modelscope 为什么必须 <1.38
+  modelscope >=1.38 把 snapshot_download 的缓存布局换成了 HuggingFace 风格
+  (<cache_dir>/models/<owner>--<name>/snapshots/<rev>/...)，而参考实现
+  backend/app/models/manager.py:local_dir() 假设老布局 <cache_dir>/<owner>/<name>。
+  用 1.40.2 实测：is_downloaded() 永远 False -> 下完再补 aux 文件时
+  shutil.copy2 抛 FileNotFoundError: [WinError 3]。
+  降到 1.37.1 后 snapshot_download(cache_dir=...) 返回
+  <cache_dir>\iic\<repo>，参考实现代码不用改即可跑通。
+
+torch 状态
+  未安装（刻意）。按 backend/app/engine/funasr_engine.py:_ensure_funasr() 的 §17 顺序
+  注入 torch-stub：先 import modelscope.hub.snapshot_download，再 import
+  librosa/scipy.signal，然后装 torch stub（带 __spec__ / __version__ / Tensor），
+  最后 import funasr_onnx。
+
+外部工具
+  ffmpeg   8.1.1-essentials_build-www.gyan.dev（PATH；参考实现 packaging/bin/ 为空，
+           所以原项目也走 PATH，与本 harness 用的是同一个二进制）
+  ffprobe  同目录
+
+vendor 的 funasr-onnx 源码
+  reference/pkgs/funasr_onnx-0.4.3-py3-none-any.whl
+  sha256 = 7dd65d6a506dc171a53e87eb55faf0a3e478f2531f90671246f43c2c56023fe6
+  解包到 reference/funasr_onnx/（wheel 内 funasr_onnx/ 的内容平铺，含
+  _WHEEL_METADATA.txt = wheel 的 METADATA）
+
+参考实现源码
+  reference/funasr-subtitle/  = github.com/rockbenben/funasr-subtitle
+  git clone --depth 1，HEAD commit 见 reference/funasr-subtitle/.git
+
+模型（modelscope，缓存目录 %LOCALAPPDATA%\funasr-subtitle\models，共约 1.6 GB）
+  iic/speech_fsmn_vad_zh-cn-16k-common-onnx                                   (VAD, model_quant.onnx)
+  iic/SenseVoiceSmall-onnx            + bpe 从 iic/SenseVoiceSmall 补            (ASR, model_quant.onnx)
+  iic/punc_ct-transformer_zh-cn-common-vocab272727-onnx                       (punc, model_quant.onnx)
+  iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-onnx         (Paraformer)
+  iic/speech_paraformer-large-contextual_asr_nat-zh-cn-16k-common-vocab8404-onnx
+        + 本地复制 model_eb.onnx -> model_eb_quant.onnx                        (热词版)

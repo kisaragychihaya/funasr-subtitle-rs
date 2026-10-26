@@ -1,0 +1,382 @@
+{
+  "generated_by": "funasr-subtitle-rs/reference/dump_golden.py",
+  "reference_impl": "github.com/rockbenben/funasr-subtitle (backend/app)",
+  "note": "所有 .f32bin 是小端 float32、行主序；s16bin 是小端 int16。推理输入 = s16bin/32768.0。",
+  "dither_pinned": {
+    "why": "SenseVoice/Paraformer 的 config.yaml 未写 dither，funasr-onnx 的 WavFrontend 默认 dither=1.0（kaldi fbank 在波形上叠 ~1LSB 高斯噪声），同一音频两次 extract_feat 结果不同、量化 logits 能差十几、CTC 帧会漂，上游这条路径本身不是确定性的。golden 全流程强制 dither=0（VAD 的 config.yaml 本来就写 0.0），这样两遍运行才能字节一致、Rust 侧才有可比对象。",
+    "original_values": {
+      "iic/SenseVoiceSmall-onnx": {
+        "asr_dither_from": 1.0,
+        "vad_dither_from": 0.0
+      },
+      "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-onnx": {
+        "asr_dither_from": 1.0,
+        "vad_dither_from": 0.0
+      },
+      "iic/speech_paraformer-large-contextual_asr_nat-zh-cn-16k-common-vocab8404-onnx": {
+        "asr_dither_from": 1.0,
+        "vad_dither_from": 0.0
+      }
+    }
+  },
+  "params": {
+    "sample_rate": 16000,
+    "punct": "auto",
+    "max_chars": 30,
+    "max_cue_ms": 7000,
+    "punc_chunk": 110,
+    "sensevoice_prefix_frames": 4,
+    "language": "auto",
+    "textnorm": "withitn",
+    "quantize": true,
+    "device": "cpu",
+    "fbank_dither": 0.0,
+    "intra_op_num_threads": 4
+  },
+  "files": [
+    {
+      "path": "contextual/hotword_case.json",
+      "size": 1343
+    },
+    {
+      "path": "contextual/hotword_case.s16bin",
+      "size": 133062
+    },
+    {
+      "path": "contextual/hotword_case_audio.json",
+      "size": 310
+    },
+    {
+      "path": "contextual/sample_zh/preds.json",
+      "size": 333
+    },
+    {
+      "path": "contextual/sample_zh/segments.json",
+      "size": 240
+    },
+    {
+      "path": "contextual/sample_zh/text.txt",
+      "size": 98
+    },
+    {
+      "path": "input/sample_en_runon/input.json",
+      "size": 485
+    },
+    {
+      "path": "input/sample_en_runon/input.s16bin",
+      "size": 429264
+    },
+    {
+      "path": "input/sample_long/input.json",
+      "size": 477
+    },
+    {
+      "path": "input/sample_long/input.s16bin",
+      "size": 655202
+    },
+    {
+      "path": "input/sample_zh/input.json",
+      "size": 473
+    },
+    {
+      "path": "input/sample_zh/input.s16bin",
+      "size": 330284
+    },
+    {
+      "path": "paraformer/sample_long/preds.json",
+      "size": 527
+    },
+    {
+      "path": "paraformer/sample_long/segments.json",
+      "size": 647
+    },
+    {
+      "path": "paraformer/sample_long/text.txt",
+      "size": 287
+    },
+    {
+      "path": "paraformer/sample_zh/preds.json",
+      "size": 333
+    },
+    {
+      "path": "paraformer/sample_zh/segments.json",
+      "size": 240
+    },
+    {
+      "path": "paraformer/sample_zh/text.txt",
+      "size": 98
+    },
+    {
+      "path": "punc/cases.json",
+      "size": 2156
+    },
+    {
+      "path": "punc/chunk_plan.json",
+      "size": 1690
+    },
+    {
+      "path": "punc/raw_ct.json",
+      "size": 4884
+    },
+    {
+      "path": "sensevoice/sample_en_runon/enc_len.json",
+      "size": 10
+    },
+    {
+      "path": "sensevoice/sample_en_runon/feats.f32bin",
+      "size": 499520
+    },
+    {
+      "path": "sensevoice/sample_en_runon/feats.json",
+      "size": 38
+    },
+    {
+      "path": "sensevoice/sample_en_runon/logits.f32bin",
+      "size": 22749940
+    },
+    {
+      "path": "sensevoice/sample_en_runon/logits.json",
+      "size": 40
+    },
+    {
+      "path": "sensevoice/sample_en_runon/output.srt",
+      "size": 430
+    },
+    {
+      "path": "sensevoice/sample_en_runon/segments.json",
+      "size": 561
+    },
+    {
+      "path": "sensevoice/sample_en_runon/span.json",
+      "size": 236
+    },
+    {
+      "path": "sensevoice/sample_en_runon/spans/span_000/enc_len.json",
+      "size": 10
+    },
+    {
+      "path": "sensevoice/sample_en_runon/spans/span_000/feats.f32bin",
+      "size": 499520
+    },
+    {
+      "path": "sensevoice/sample_en_runon/spans/span_000/feats.json",
+      "size": 38
+    },
+    {
+      "path": "sensevoice/sample_en_runon/spans/span_000/logits.f32bin",
+      "size": 22749940
+    },
+    {
+      "path": "sensevoice/sample_en_runon/spans/span_000/logits.json",
+      "size": 40
+    },
+    {
+      "path": "sensevoice/sample_en_runon/spans/span_000/span.json",
+      "size": 236
+    },
+    {
+      "path": "sensevoice/sample_en_runon/spans/span_000/tokens.json",
+      "size": 7760
+    },
+    {
+      "path": "sensevoice/sample_en_runon/tokens.json",
+      "size": 7760
+    },
+    {
+      "path": "sensevoice/sample_long/enc_len.json",
+      "size": 10
+    },
+    {
+      "path": "sensevoice/sample_long/feats.f32bin",
+      "size": 577920
+    },
+    {
+      "path": "sensevoice/sample_long/feats.json",
+      "size": 38
+    },
+    {
+      "path": "sensevoice/sample_long/logits.f32bin",
+      "size": 26257640
+    },
+    {
+      "path": "sensevoice/sample_long/logits.json",
+      "size": 40
+    },
+    {
+      "path": "sensevoice/sample_long/output.srt",
+      "size": 447
+    },
+    {
+      "path": "sensevoice/sample_long/segments.json",
+      "size": 583
+    },
+    {
+      "path": "sensevoice/sample_long/span.json",
+      "size": 236
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_000/enc_len.json",
+      "size": 10
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_000/feats.f32bin",
+      "size": 577920
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_000/feats.json",
+      "size": 38
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_000/logits.f32bin",
+      "size": 26257640
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_000/logits.json",
+      "size": 40
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_000/span.json",
+      "size": 236
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_000/tokens.json",
+      "size": 10812
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_001/enc_len.json",
+      "size": 9
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_001/feats.f32bin",
+      "size": 176960
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_001/feats.json",
+      "size": 37
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_001/logits.f32bin",
+      "size": 8318260
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_001/logits.json",
+      "size": 39
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_001/span.json",
+      "size": 241
+    },
+    {
+      "path": "sensevoice/sample_long/spans/span_001/tokens.json",
+      "size": 3283
+    },
+    {
+      "path": "sensevoice/sample_long/tokens.json",
+      "size": 10812
+    },
+    {
+      "path": "sensevoice/sample_zh/enc_len.json",
+      "size": 10
+    },
+    {
+      "path": "sensevoice/sample_zh/feats.f32bin",
+      "size": 219520
+    },
+    {
+      "path": "sensevoice/sample_zh/feats.json",
+      "size": 37
+    },
+    {
+      "path": "sensevoice/sample_zh/logits.f32bin",
+      "size": 10222440
+    },
+    {
+      "path": "sensevoice/sample_zh/logits.json",
+      "size": 40
+    },
+    {
+      "path": "sensevoice/sample_zh/output.srt",
+      "size": 175
+    },
+    {
+      "path": "sensevoice/sample_zh/segments.json",
+      "size": 242
+    },
+    {
+      "path": "sensevoice/sample_zh/span.json",
+      "size": 231
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_000/enc_len.json",
+      "size": 10
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_000/feats.f32bin",
+      "size": 219520
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_000/feats.json",
+      "size": 37
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_000/logits.f32bin",
+      "size": 10222440
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_000/logits.json",
+      "size": 40
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_000/span.json",
+      "size": 231
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_000/tokens.json",
+      "size": 3241
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_001/enc_len.json",
+      "size": 9
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_001/feats.f32bin",
+      "size": 132160
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_001/feats.json",
+      "size": 37
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_001/logits.f32bin",
+      "size": 6313860
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_001/logits.json",
+      "size": 39
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_001/span.json",
+      "size": 238
+    },
+    {
+      "path": "sensevoice/sample_zh/spans/span_001/tokens.json",
+      "size": 2255
+    },
+    {
+      "path": "sensevoice/sample_zh/tokens.json",
+      "size": 3241
+    },
+    {
+      "path": "vad/sample_en_runon/spans.json",
+      "size": 29
+    },
+    {
+      "path": "vad/sample_long/spans.json",
+      "size": 59
+    },
+    {
+      "path": "vad/sample_zh/spans.json",
+      "size": 56
+    }
+  ]
+}

@@ -20,18 +20,21 @@ pub struct Engine {
     // T10：ModelManager、Vad、AsrEngine、Punctuator、ModelSpec
 }
 
+/// 进度回调：stage ∈ vad/asr/punc/assembling，percent ∈ [0,100]。
+pub type ProgressFn<'a> = &'a dyn Fn(&str, f32);
+
 impl Engine {
     pub fn new(opts: EngineOptions) -> Result<Self> {
         let _ = opts;
         todo!("T10")
     }
 
-    /// 整段转写。progress 回调 (stage, percent)，stage ∈ vad/asr/punc/assembling。
+    /// 整段转写。progress 回调 (stage, percent)。
     pub fn transcribe(
         &mut self,
         audio: &Audio,
         job: &JobOptions,
-        progress: Option<&dyn Fn(&str, f32)>,
+        progress: Option<ProgressFn<'_>>,
     ) -> Result<Vec<Segment>> {
         let _ = (audio, job, progress);
         todo!("T10")

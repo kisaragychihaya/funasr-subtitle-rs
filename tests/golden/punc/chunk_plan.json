@@ -1,0 +1,44 @@
+{
+  "punc_chunk": 110,
+  "single_call_limit": 140,
+  "note": "FunasrEngine._punctuate：len<=punc_chunk+30 单次调用；否则按 punc_chunk 分块，块内回退到最后一个空格，逐块补标点后用单个空格 join",
+  "cases": [
+    {
+      "input_len": 34,
+      "chunked": false,
+      "chunks": [
+        "今天我们来讲一下语音识别技术的基本原理它把声音信号一步一步地转成文字"
+      ]
+    },
+    {
+      "input_len": 63,
+      "chunked": false,
+      "chunks": [
+        "this is a simple english sentence without any final punctuation"
+      ]
+    },
+    {
+      "input_len": 65,
+      "chunked": false,
+      "chunks": [
+        "Apple Released a New iPhone and the Stock Market Reacted Strongly"
+      ]
+    },
+    {
+      "input_len": 230,
+      "chunked": true,
+      "chunks": [
+        "今天我们来讲一下语音识别技术的基本原理它把声音信号转成文字的过程大致分为三步第一步是把声音切成一小段一小段的帧第二步是用神经网络把每一帧变成一个高维向量第三步是把这些向量解码成文字在解码的时候我们会用到一种叫做CTC的方",
+        "法它可以在不知道每个字具体位置的情况下完成对齐这就是为什么端到端模型可以省掉传统语音识别里复杂的声学模型和语言模型分步训练的流程标点在语音识别里同样重要因为标点能帮助读者断句和理清语义关系如果没有标点读者往往需要反复回读",
+        "才能理解一句话的意思"
+      ]
+    },
+    {
+      "input_len": 7,
+      "chunked": false,
+      "chunks": [
+        "今天天气很好。"
+      ]
+    }
+  ]
+}

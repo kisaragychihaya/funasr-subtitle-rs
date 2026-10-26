@@ -1,0 +1,22 @@
+[
+  {
+    "start_ms": 60,
+    "end_ms": 3302,
+    "text": "So the thing about neural networks is that they learn patterns from data"
+  },
+  {
+    "start_ms": 3302,
+    "end_ms": 6604,
+    "text": "and once you have enough data you can train a model that generalizes pretty"
+  },
+  {
+    "start_ms": 6604,
+    "end_ms": 9907,
+    "text": "well to new examples, which is exactly what we want when we build these systems"
+  },
+  {
+    "start_ms": 9907,
+    "end_ms": 13390,
+    "text": "for real worldor applications like translation and speech recognition"
+  }
+]

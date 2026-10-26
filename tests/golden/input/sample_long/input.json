@@ -1,0 +1,18 @@
+{
+  "fixture": "sample_long",
+  "source": "tests/fixtures/sample_long.wav",
+  "sample_rate": 16000,
+  "channels": 1,
+  "samples": 327601,
+  "duration_ms": 20475,
+  "dtype": "int16",
+  "endianness": "little",
+  "file": "input.s16bin",
+  "ffmpeg_args": "-vn -ac 1 -ar 16000 -f s16le pipe:1",
+  "float_scale": 32768.0,
+  "engine_array": "pcm.astype(float32) / 32768.0",
+  "vs_project_f32le_path": {
+    "max_abs_float_diff": 1.52587890625e-05,
+    "max_abs_s16_lsb_diff": 0
+  }
+}

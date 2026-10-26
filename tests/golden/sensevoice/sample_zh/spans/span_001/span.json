@@ -1,0 +1,16 @@
+{
+  "span_index": 1,
+  "start_ms": 6170,
+  "end_ms": 9730,
+  "sample_range": [
+    98720,
+    155680
+  ],
+  "samples": 56960,
+  "feats_len": 59,
+  "enc_len": 63,
+  "lid": 0,
+  "textnorm": 14,
+  "prefix_frames": 4,
+  "speech_frames": 59
+}

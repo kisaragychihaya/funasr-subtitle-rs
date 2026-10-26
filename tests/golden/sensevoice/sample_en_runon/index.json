@@ -1,0 +1,21 @@
+{
+  "note": "顶层 feats/logits/tokens/enc_len/span = spans/span_000 的副本；全部分段在 spans/<span_xxx>/ 下",
+  "spans": [
+    {
+      "span_index": 0,
+      "start_ms": 0,
+      "end_ms": 13390,
+      "sample_range": [
+        0,
+        214240
+      ],
+      "samples": 214240,
+      "feats_len": 223,
+      "enc_len": 227,
+      "lid": 0,
+      "textnorm": 14,
+      "prefix_frames": 4,
+      "speech_frames": 223
+    }
+  ]
+}
