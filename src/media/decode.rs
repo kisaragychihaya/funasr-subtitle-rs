@@ -298,11 +298,11 @@ fn append_le_i16(dst: &mut Vec<i16>, carry: &mut Option<u8>, data: &[u8]) {
             }
         }
     }
-    let mut it = rest.chunks_exact(2);
-    for pair in &mut it {
-        dst.push(i16::from_le_bytes([pair[0], pair[1]]));
+    let (pairs, remainder) = rest.as_chunks::<2>();
+    for pair in pairs {
+        dst.push(i16::from_le_bytes(*pair));
     }
-    if let Some(&byte) = it.remainder().first() {
+    if let Some(&byte) = remainder.first() {
         *carry = Some(byte);
     }
 }

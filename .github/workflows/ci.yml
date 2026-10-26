@@ -48,27 +48,46 @@ jobs:
           - ubuntu-24.04-arm       # Linux arm64（原生，附带验证）
           - windows-11-arm         # Windows arm64（原生；公测，仅公开仓库免费）
     runs-on: ${{ matrix.os }}
+    env:
+      # ort 的 macOS arm64 预编译库按 macOS 13.4 构建（且 ObjC 代码引用
+      # __isPlatformVersionAtLeast）：部署目标低于 13.4 时 release(LTO) 链接会炸符号。
+      # 产物因此要求 macOS 13.4+（Apple Silicon 机器实际都 ≥14，无实际影响）。
+      MACOSX_DEPLOYMENT_TARGET: "13.4"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      # windows-11-arm 镜像可能不带 ffmpeg：尽力安装；装不上则跳过解码测试（其余测试不依赖 ffmpeg）
-      - name: 确保 ffmpeg 可用（windows-11-arm）
+      # windows-11-arm 镜像不带 ffmpeg 也没有 winget：尽力安装（winget → 直拉 gyan.dev
+      # arm64 静态包），任何失败都只告警不阻断——测试步骤会跳过 test_decode 其余照跑。
+      - name: 确保 ffmpeg（windows-11-arm，尽力而为）
         if: matrix.os == 'windows-11-arm'
         shell: pwsh
         run: |
-          if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
-            ffmpeg -version | Select-Object -First 1
-          } else {
+          $ErrorActionPreference = 'Continue'
+          function Have-Ffmpeg { [bool](Get-Command ffmpeg -ErrorAction SilentlyContinue) }
+          if (Have-Ffmpeg) { ffmpeg -version | Select-Object -First 1 }
+          else {
             Write-Host "ffmpeg 不在 PATH，尝试 winget 安装..."
-            winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements --silent
-            $link = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-            echo "$link" >> $env:GITHUB_PATH
-            $env:PATH += ";$link"
-            if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { ffmpeg -version | Select-Object -First 1 }
-            else { Write-Host "::warning::ffmpeg 安装失败，将跳过 test_decode" }
+            try {
+              winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements --silent
+              $link = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+              echo "$link" >> $env:GITHUB_PATH; $env:PATH += ";$link"
+            } catch { Write-Host "winget 不可用：$($_.Exception.Message)" }
+            if (-not (Have-Ffmpeg)) {
+              Write-Host "改从 gyan.dev 直拉 arm64 静态包..."
+              try {
+                $zip = "$env:TEMP\ffmpeg-arm64.zip"
+                Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-arm64-essentials.zip" -OutFile $zip
+                Expand-Archive $zip "$env:TEMP\ffmpeg-arm64"
+                $bin = (Get-ChildItem "$env:TEMP\ffmpeg-arm64" -Directory | Select-Object -First 1).FullName + "\bin"
+                echo "$bin" >> $env:GITHUB_PATH; $env:PATH += ";$bin"
+              } catch { Write-Host "直拉也失败：$($_.Exception.Message)" }
+            }
           }
+          if (Have-Ffmpeg) { Write-Host "ffmpeg OK"; ffmpeg -version | Select-Object -First 1 }
+          else { Write-Host "::warning::ffmpeg 最终不可用，cargo test 将跳过 test_decode" }
+          exit 0
 
       # 非 ignored 测试套件：golden 对齐 + 纯逻辑，不依赖大模型下载
       # （test_vad 只会拉 ~500KB 的 VAD 模型到临时目录）
@@ -110,6 +129,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       FUNASR_SUBTITLE_MODELS_ROOT: ${{ github.workspace }}/.models
+      # 同 test job：macOS 链接需要 ≥13.4 部署目标
+      MACOSX_DEPLOYMENT_TARGET: "13.4"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
