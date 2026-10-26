@@ -1,0 +1,26 @@
+[package]
+name = "funasr-subtitle-rs"
+version = "0.1.0"
+edition = "2024"
+description = "Offline local subtitle generation from audio/video via FunASR ONNX models (SenseVoice/Paraformer), Rust CLI, CPU-only"
+license = "MIT"
+
+[dependencies]
+ort = { version = "=2.0.0-rc.15", features = ["download-binaries"] }
+ndarray = { version = "=0.17.2", features = ["serde"] }
+clap = { version = "=4.5", features = ["derive"] }
+serde = { version = "=1", features = ["derive"] }
+serde_json = { version = "=1" }
+regex = { version = "=1" }
+reqwest = { version = "=0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+indicatif = { version = "=0.18.6" }
+thiserror = { version = "=2" }
+anyhow = { version = "=1" }
+
+[dev-dependencies]
+tempfile = "=3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
