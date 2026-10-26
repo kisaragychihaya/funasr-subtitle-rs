@@ -6,7 +6,7 @@
 //! （模型根可用 ModelManager 预下载；不设时会往默认缓存目录下载约 240MB）
 
 use funasr_subtitle_rs::asr::{AsrChunkOutput, AsrEngine, Paraformer};
-use funasr_subtitle_rs::models::manager::{default_models_root, ModelManager};
+use funasr_subtitle_rs::models::manager::{ModelManager, default_models_root};
 use funasr_subtitle_rs::models::{PARAFORMER_ZH, VAD_MODEL};
 use funasr_subtitle_rs::vad::Vad;
 use std::path::PathBuf;

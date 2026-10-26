@@ -247,9 +247,9 @@ impl CtPunc {
             // 对齐 funasr 的 log_severity_level=4（只保留 FATAL）
             .with_log_level(ort::logging::LogLevel::Fatal)
             .map_err(|e| Error::Model(format!("设置日志级别失败: {e}")))?;
-        let session = builder
-            .commit_from_file(&model_file)
-            .map_err(|e| Error::Model(format!("加载标点模型 {} 失败: {e}", model_file.display())))?;
+        let session = builder.commit_from_file(&model_file).map_err(|e| {
+            Error::Model(format!("加载标点模型 {} 失败: {e}", model_file.display()))
+        })?;
 
         // 词表最后一项是 `<unk>`（`TokenIDConverter` 的 unk_symbol），映射要按最终 map 取，
         // 保证和 Python 的 dict 语义一致（重复项取最后一个下标）
@@ -262,9 +262,10 @@ impl CtPunc {
             .enumerate()
             .map(|(idx, tok)| (tok, idx as i64))
             .collect();
-        let unk_id = token2id.get(&unk_symbol).copied().ok_or_else(|| {
-            Error::Model(format!("tokens.json 里找不到 unk 符号 {unk_symbol}"))
-        })?;
+        let unk_id = token2id
+            .get(&unk_symbol)
+            .copied()
+            .ok_or_else(|| Error::Model(format!("tokens.json 里找不到 unk 符号 {unk_symbol}")))?;
 
         Ok(Self {
             session,
@@ -399,9 +400,7 @@ impl CtPunc {
             .map_err(|e| Error::Inference(format!("读取 ct-punc 输出失败: {e}")))?;
         let dims: Vec<usize> = shape.iter().map(|&d| d.max(0) as usize).collect();
         if dims.len() != 3 || dims[0] == 0 || dims[2] == 0 {
-            return Err(Error::Inference(format!(
-                "ct-punc 输出维度异常: {dims:?}"
-            )));
+            return Err(Error::Inference(format!("ct-punc 输出维度异常: {dims:?}")));
         }
         let (frames, classes) = (dims[1], dims[2]);
         if logits.len() < frames * classes {

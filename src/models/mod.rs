@@ -41,7 +41,10 @@ pub const SENSEVOICE: ModelSpec = ModelSpec {
     task: ModelTask::Asr,
     size_mb: 235.0,
     repo: "iic/SenseVoiceSmall-onnx",
-    aux_files: &[("chn_jpn_yue_eng_ko_spectok.bpe.model", "iic/SenseVoiceSmall")],
+    aux_files: &[(
+        "chn_jpn_yue_eng_ko_spectok.bpe.model",
+        "iic/SenseVoiceSmall",
+    )],
     builtin_punc: true,
     engine: EngineKind::SenseVoice,
     supports_hotwords: false,

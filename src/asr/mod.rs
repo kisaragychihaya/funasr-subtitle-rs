@@ -9,8 +9,8 @@ pub use paraformer::Paraformer;
 pub use sensevoice::SenseVoice;
 
 use crate::error::Result;
-use crate::types::{EngineKind, JobOptions};
 use crate::types::TimedPiece;
+use crate::types::{EngineKind, JobOptions};
 
 /// 一个 VAD 语音段的识别输出。
 pub enum AsrChunkOutput {

@@ -2,4 +2,4 @@
 
 mod decode;
 
-pub use decode::{decode_16k_mono, Audio, DEFAULT_STALL_TIMEOUT_SECS};
+pub use decode::{Audio, DEFAULT_STALL_TIMEOUT_SECS, decode_16k_mono};

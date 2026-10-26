@@ -44,7 +44,7 @@ use ort::session::builder::GraphOptimizationLevel;
 use ort::value::Value;
 
 use crate::error::{Error, Result};
-use crate::frontend::{Cmvn, FrontendConfig, Features, extract_features, load_cmvn};
+use crate::frontend::{Cmvn, Features, FrontendConfig, extract_features, load_cmvn};
 
 /// 前端固定 16k（`frontend_conf.fs`）。
 const SAMPLE_RATE: u32 = 16_000;
@@ -260,7 +260,11 @@ impl WindowDetector {
     ///
     /// 注意阈值比较是不对称的（语音靠 `>=`、静音靠 `<=`），`win_sum == 阈值` 时两个分支
     /// 都可能成立，谁生效取决于当前的 `pre_frame_state`。
-    pub fn detect_one_frame(&mut self, frame_state: FrameState, _frame_count: i64) -> AudioChangeState {
+    pub fn detect_one_frame(
+        &mut self,
+        frame_state: FrameState,
+        _frame_count: i64,
+    ) -> AudioChangeState {
         let cur_frame_state = match frame_state {
             FrameState::Speech => 1,
             FrameState::Sil => 0,
@@ -406,8 +410,7 @@ impl E2EVad {
             noise_average_decibel: -100.0,
             output_data_buf: Vec::new(),
             output_data_buf_offset: 0,
-            max_end_sil_frame_cnt_thresh: opts.max_end_silence_time
-                - opts.speech_to_sil_time_thres,
+            max_end_sil_frame_cnt_thresh: opts.max_end_silence_time - opts.speech_to_sil_time_thres,
             speech_noise_thres: opts.speech_noise_thres,
             sil_scores: Vec::new(),
             idx_pre_chunk: 0,
@@ -470,8 +473,9 @@ impl E2EVad {
         }
         let mut offset = 0usize;
         while offset + frame_sample_length <= waveform.len() {
-            self.decibel
-                .push(frame_decibel(&waveform[offset..offset + frame_sample_length]));
+            self.decibel.push(frame_decibel(
+                &waveform[offset..offset + frame_sample_length],
+            ));
             offset += frame_shift_length;
         }
     }
@@ -561,7 +565,12 @@ impl E2EVad {
     }
 
     /// `OnVoiceEnd`。
-    fn on_voice_end(&mut self, end_frame: i64, fake_result: bool, is_last_frame: bool) -> Result<()> {
+    fn on_voice_end(
+        &mut self,
+        end_frame: i64,
+        fake_result: bool,
+        is_last_frame: bool,
+    ) -> Result<()> {
         let mut t = self.latest_confirmed_speech_frame + 1;
         while t < end_frame {
             self.on_voice_detected(t)?;
@@ -580,7 +589,11 @@ impl E2EVad {
     }
 
     /// `MaybeOnVoiceEndIfLastFrame`。
-    fn maybe_on_voice_end_if_last_frame(&mut self, is_final_frame: bool, cur_frm_idx: i64) -> Result<()> {
+    fn maybe_on_voice_end_if_last_frame(
+        &mut self,
+        is_final_frame: bool,
+        cur_frm_idx: i64,
+    ) -> Result<()> {
         if is_final_frame {
             self.on_voice_end(cur_frm_idx, false, true)?;
             self.vad_state_machine = VadStateMachine::EndPointDetected;
@@ -592,7 +605,8 @@ impl E2EVad {
     fn latency_frm_num_at_start_point(&self) -> i64 {
         let mut vad_latency = self.windows_detector.win_size();
         if self.opts.do_extend {
-            vad_latency += (self.opts.lookback_time_start_point as f64 / self.opts.frame_in_ms as f64) as i64;
+            vad_latency +=
+                (self.opts.lookback_time_start_point as f64 / self.opts.frame_in_ms as f64) as i64;
         }
         vad_latency
     }
@@ -616,7 +630,8 @@ impl E2EVad {
         let sil_score = *self
             .sil_scores
             .get(local as usize)
-            .ok_or_else(|| Error::Inference(format!("VAD 分数帧下标 {local} 越界")))? as f64;
+            .ok_or_else(|| Error::Inference(format!("VAD 分数帧下标 {local} 越界")))?
+            as f64;
         let noise_prob = sil_score.ln() * self.opts.speech_2_noise_ratio;
         let sum_score = 1.0 - sil_score;
         let speech_prob = sum_score.ln();
@@ -663,9 +678,7 @@ impl E2EVad {
         let end_idx = self.output_data_buf.len();
         for i in self.output_data_buf_offset..end_idx {
             let buf = self.output_data_buf[i];
-            if !is_final
-                && (!buf.contain_seg_start_point || !buf.contain_seg_end_point)
-            {
+            if !is_final && (!buf.contain_seg_start_point || !buf.contain_seg_end_point) {
                 continue;
             }
             segments.push((buf.start_ms, buf.end_ms));
@@ -806,8 +819,7 @@ impl E2EVad {
                         let silence_timeout = !self.opts.multiple_utterance
                             && self.continous_silence_frame_count * frm_shift_in_ms
                                 > self.opts.max_start_silence_time;
-                        if silence_timeout
-                            || (is_final_frame && self.number_end_time_detected == 0)
+                        if silence_timeout || (is_final_frame && self.number_end_time_detected == 0)
                         {
                             let mut t = self.lastest_confirmed_silence_frame + 1;
                             while t < cur_frm_idx {
@@ -908,9 +920,9 @@ impl Vad {
             // 对齐 funasr 的 log_severity_level=4（只保留 FATAL）
             .with_log_level(ort::logging::LogLevel::Fatal)
             .map_err(|e| Error::Model(format!("设置日志级别失败: {e}")))?;
-        let session = builder
-            .commit_from_file(&model_file)
-            .map_err(|e| Error::Model(format!("加载 VAD 模型 {} 失败: {e}", model_file.display())))?;
+        let session = builder.commit_from_file(&model_file).map_err(|e| {
+            Error::Model(format!("加载 VAD 模型 {} 失败: {e}", model_file.display()))
+        })?;
 
         Ok(Self {
             session,

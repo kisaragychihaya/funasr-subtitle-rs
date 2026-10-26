@@ -1,0 +1,124 @@
+# GitHub Actions CI：矩阵覆盖 x64 与 arm64（含 macOS Apple Silicon 与 Windows ARM64）
+#
+# 平台支持依据（已在本机实证，见仓库讨论）：
+#   - ort 2.0.0-rc.15 download-binaries 提供 aarch64-apple-darwin（coreml 变体）与
+#     aarch64-pc-windows-msvc（directml 变体）的 ONNX Runtime 1.31 预编译库；
+#     纯 CPU 用法（不启用任何 EP 特性）下载即可用，多余 EP 运行时懒加载不影响。
+#   - 全部 runner 原生编译，无交叉编译。
+#
+# ⚠️ windows-11-arm runner 处于 GitHub 公测，目前仅【公开仓库】免费可用；
+#    私有仓库会排队不启动（需 Larger Runners 计费），届时请从矩阵中移除它。
+#    参考实例：https://github.com/kisaragychihaya/pyncnn_vulkan_build
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 代码质量门：fmt + clippy（一个平台即可，行为与平台无关）
+  check:
+    name: fmt + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all-targets --locked -- -D warnings
+
+  # 全平台测试 + release 构建产物
+  test:
+    name: test + build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest          # Linux x64
+          - windows-latest         # Windows x64
+          - macos-15               # macOS arm64（Apple Silicon，原生）
+          - ubuntu-24.04-arm       # Linux arm64（原生，附带验证）
+          - windows-11-arm         # Windows arm64（原生；公测，仅公开仓库免费）
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # windows-11-arm 镜像可能不带 ffmpeg：尽力安装；装不上则跳过解码测试（其余测试不依赖 ffmpeg）
+      - name: 确保 ffmpeg 可用（windows-11-arm）
+        if: matrix.os == 'windows-11-arm'
+        shell: pwsh
+        run: |
+          if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
+            ffmpeg -version | Select-Object -First 1
+          } else {
+            Write-Host "ffmpeg 不在 PATH，尝试 winget 安装..."
+            winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements --silent
+            $link = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+            echo "$link" >> $env:GITHUB_PATH
+            $env:PATH += ";$link"
+            if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { ffmpeg -version | Select-Object -First 1 }
+            else { Write-Host "::warning::ffmpeg 安装失败，将跳过 test_decode" }
+          }
+
+      # 非 ignored 测试套件：golden 对齐 + 纯逻辑，不依赖大模型下载
+      # （test_vad 只会拉 ~500KB 的 VAD 模型到临时目录）
+      - name: cargo test
+        shell: bash
+        run: |
+          set -e
+          if command -v ffmpeg >/dev/null 2>&1; then
+            cargo test --locked
+          else
+            echo "::warning::ffmpeg 不可用，跳过 test_decode（其余测试照跑）"
+            cargo test --locked \
+              --test test_segmentation --test test_export --test test_frontend \
+              --test test_models --test test_punc --test test_vad \
+              --test test_sensevoice --test test_paraformer --test test_pipeline \
+              --test test_ort_shared
+          fi
+
+      - name: release 构建
+        run: cargo build --release --locked
+
+      - name: 上传 release 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: funasr-subtitle-rs-${{ matrix.os }}
+          path: |
+            target/release/funasr-subtitle-rs
+            target/release/funasr-subtitle-rs.exe
+          if-no-files-found: ignore
+
+  # 真实模型 golden 端到端对拍（1.7GB 模型下载，手动触发；模型目录做缓存）
+  golden-real:
+    name: 真实模型 golden 对拍 (${{ matrix.os }})
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    env:
+      FUNASR_SUBTITLE_MODELS_ROOT: ${{ github.workspace }}/.models
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: 缓存模型目录
+        uses: actions/cache@v4
+        with:
+          path: .models
+          key: models-v1-${{ hashFiles('src/models/mod.rs') }}
+          restore-keys: models-v1-
+      - name: 真实模型对拍（含 #[ignore]）
+        run: cargo test --locked -- --include-ignored --test-threads=1

@@ -12,9 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use funasr_subtitle_rs::models::VAD_MODEL;
-use funasr_subtitle_rs::models::manager::{
-    ModelManager, default_models_root, has_onnx, model_dir,
-};
+use funasr_subtitle_rs::models::manager::{ModelManager, default_models_root, has_onnx, model_dir};
 use funasr_subtitle_rs::vad::{
     AudioChangeState, E2EVad, FrameState, Vad, WindowDetector, frame_decibel,
     silence_lookback_frames,
@@ -30,8 +28,8 @@ fn manifest_path(rel: &str) -> PathBuf {
 
 fn read_json<T: serde::de::DeserializeOwned>(rel: &str) -> T {
     let path = manifest_path(rel);
-    let raw = fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("读取 {} 失败: {e}", path.display()));
+    let raw =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("读取 {} 失败: {e}", path.display()));
     serde_json::from_str(&raw).unwrap_or_else(|e| panic!("解析 {} 失败: {e}", path.display()))
 }
 
@@ -286,7 +284,10 @@ fn test_state_machine_chunked_call_matches_reference() {
     let w1_end = (step - 1) * 160 + 400;
     let w2_start = step * 160;
     let w2_end = (2 * step - 1) * 160 + 400;
-    assert_eq!((w1_start, w1_end, w2_start, w2_end), (0, 32240, 32000, 64240));
+    assert_eq!(
+        (w1_start, w1_end, w2_start, w2_end),
+        (0, 32240, 32000, 64240)
+    );
 
     let mut m = E2EVad::offline();
     assert_eq!(
@@ -300,4 +301,3 @@ fn test_state_machine_chunked_call_matches_reference() {
         "跨块的段起点/终点与参考实现不一致"
     );
 }
-

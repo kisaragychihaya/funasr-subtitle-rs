@@ -445,7 +445,12 @@ fn test_strip_terminal_timed_same_rules_with_times() {
 #[test]
 fn test_is_py_space_covers_bidi_controls() {
     use funasr_subtitle_rs::text::normalize::is_py_space;
-    assert!(is_py_space('\u{1c}') && is_py_space('\u{1d}') && is_py_space('\u{1e}') && is_py_space('\u{1f}'));
+    assert!(
+        is_py_space('\u{1c}')
+            && is_py_space('\u{1d}')
+            && is_py_space('\u{1e}')
+            && is_py_space('\u{1f}')
+    );
     assert!(!is_py_space('\u{200b}')); // ZWSP 不是空白
     assert!(is_py_space('\u{85}') && is_py_space('\u{a0}'));
 }

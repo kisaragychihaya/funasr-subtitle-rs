@@ -26,10 +26,9 @@ fn manifest_path(rel: &str) -> PathBuf {
 
 fn read_json<T: serde::de::DeserializeOwned>(rel: &str) -> T {
     let path = manifest_path(rel);
-    let raw = fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("读取 {} 失败: {e}", path.display()));
-    serde_json::from_str(&raw)
-        .unwrap_or_else(|e| panic!("解析 {} 失败: {e}", path.display()))
+    let raw =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("读取 {} 失败: {e}", path.display()));
+    serde_json::from_str(&raw).unwrap_or_else(|e| panic!("解析 {} 失败: {e}", path.display()))
 }
 
 fn timed(pairs: &[(&str, i64)]) -> Vec<TimedPiece> {
@@ -43,9 +42,7 @@ fn timed(pairs: &[(&str, i64)]) -> Vec<TimedPiece> {
 }
 
 fn align_pairs(out: &[TimedPiece]) -> Vec<(String, i64)> {
-    out.iter()
-        .map(|p| (p.text.clone(), p.time_ms))
-        .collect()
+    out.iter().map(|p| (p.text.clone(), p.time_ms)).collect()
 }
 
 /// 逐字拼成一个字符串（align 的输出是一字符一个 TimedPiece）。
@@ -80,7 +77,10 @@ struct ChunkPlanCase {
 #[test]
 fn test_chunk_plan_constants_match_config() {
     let golden: ChunkPlanFile = read_json("tests/golden/punc/chunk_plan.json");
-    assert_eq!(golden.punc_chunk, PUNC_CHUNK, "PUNC_CHUNK 必须等于 config.py 默认值");
+    assert_eq!(
+        golden.punc_chunk, PUNC_CHUNK,
+        "PUNC_CHUNK 必须等于 config.py 默认值"
+    );
     assert_eq!(
         golden.single_call_limit,
         PUNC_CHUNK + 30,
@@ -104,7 +104,10 @@ fn test_chunk_plan_matches_golden() {
             "case #{i} 字符数与 golden 记录的 input_len 不一致"
         );
         let plan = plan_chunks(&case.input);
-        assert_eq!(plan.chunked, expected.chunked, "case #{i} chunked 判定不一致");
+        assert_eq!(
+            plan.chunked, expected.chunked,
+            "case #{i} chunked 判定不一致"
+        );
         assert_eq!(plan.chunks, expected.chunks, "case #{i} 分块结果不一致");
     }
 }
@@ -112,7 +115,11 @@ fn test_chunk_plan_matches_golden() {
 #[test]
 fn test_chunk_plan_long_text_is_split_at_punc_chunk() {
     // golden 里的 230 字长文本：110 / 110 / 10 三块（纯 CJK 无空格可回退）
-    let text: String = "今天我们来讲一下语音识别技术的基本原理".chars().cycle().take(230).collect();
+    let text: String = "今天我们来讲一下语音识别技术的基本原理"
+        .chars()
+        .cycle()
+        .take(230)
+        .collect();
     let plan = plan_chunks(&text);
     assert!(plan.chunked);
     let lens: Vec<usize> = plan.chunks.iter().map(|c| c.chars().count()).collect();
@@ -180,7 +187,10 @@ fn test_chunk_plan_multiple_spaces_and_blank_chunk_skipped() {
     let plan = plan_chunks(&text);
     assert!(plan.chunked);
     assert_eq!(plan.chunks, vec!["w".repeat(110), "w".repeat(20)]);
-    assert_eq!(plan.chunks.join(" "), format!("{}{}{}", "w".repeat(110), " ", "w".repeat(20)));
+    assert_eq!(
+        plan.chunks.join(" "),
+        format!("{}{}{}", "w".repeat(110), " ", "w".repeat(20))
+    );
 }
 
 #[test]
@@ -236,8 +246,8 @@ fn test_align_matches_python_reference() {
             path.display()
         )
     });
-    let file: AlignFile = serde_json::from_str(&raw)
-        .unwrap_or_else(|e| panic!("解析 {} 失败: {e}", path.display()));
+    let file: AlignFile =
+        serde_json::from_str(&raw).unwrap_or_else(|e| panic!("解析 {} 失败: {e}", path.display()));
     assert!(file.count >= 2000, "对拍用例数 {} 少于 2000", file.count);
     assert_eq!(file.count, file.cases.len());
 
@@ -290,16 +300,22 @@ fn test_align_basic_behaviors() {
 
     // 空格用上一个时间（不再是比例分配）
     let out = align_punct_to_timed(&timed(&[("ab", 5), ("cd", 9)]), "ab cd");
-    assert_eq!(align_pairs(&out), vec![
-        ("a".to_string(), 5),
-        ("b".to_string(), 5),
-        (" ".to_string(), 5),
-        ("c".to_string(), 9),
-        ("d".to_string(), 9),
-    ]);
+    assert_eq!(
+        align_pairs(&out),
+        vec![
+            ("a".to_string(), 5),
+            ("b".to_string(), 5),
+            (" ".to_string(), 5),
+            ("c".to_string(), 9),
+            ("d".to_string(), 9),
+        ]
+    );
 
     // 空 timed：全部用 last_t = 0
-    assert_eq!(align_pairs(&align_punct_to_timed(&[], "。")), vec![("。".to_string(), 0)]);
+    assert_eq!(
+        align_pairs(&align_punct_to_timed(&[], "。")),
+        vec![("。".to_string(), 0)]
+    );
     assert!(align_punct_to_timed(&timed(&[("abc", 1)]), "").is_empty());
 }
 
@@ -327,7 +343,11 @@ fn test_align_case_insensitive_and_resync_window() {
     // 8 个多余字符仍在窗口内 -> 之后重新对齐到真实时间
     let out = align_punct_to_timed(&timed(&[("ab", 1), ("cd", 2)]), "xxab，，cd");
     let times: Vec<i64> = out.iter().map(|p| p.time_ms).collect();
-    assert_eq!(times, vec![1, 1, 1, 1, 1, 1, 2, 2], "窗口内应重同步回 cd 的真实时间");
+    assert_eq!(
+        times,
+        vec![1, 1, 1, 1, 1, 1, 2, 2],
+        "窗口内应重同步回 cd 的真实时间"
+    );
 
     // 超出 8 字符窗口 -> 该字符落回 last_t，后续按原序继续
     let out = align_punct_to_timed(&timed(&[("ab", 1), ("cd", 2)]), "ab123456789cd");
@@ -355,7 +375,13 @@ fn test_code_mix_split_words() {
     // 中文逐字、ASCII 连续成词
     assert_eq!(
         code_mix_split_words("今天CTC好用"),
-        vec!["今".to_string(), "天".to_string(), "CTC".to_string(), "好".to_string(), "用".to_string()]
+        vec![
+            "今".to_string(),
+            "天".to_string(),
+            "CTC".to_string(),
+            "好".to_string(),
+            "用".to_string()
+        ]
     );
     // 任意空白（含全角空格 / 制表）都是分隔符
     assert_eq!(
